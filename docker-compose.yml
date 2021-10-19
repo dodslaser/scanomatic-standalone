@@ -1,0 +1,16 @@
+version: '2'
+
+services:
+  scanomatic:
+    image: phenomique/scanomatic:latest
+    privileged: true
+    build: .
+    ports: ["5000"]
+    volumes:
+      - scan-o-matic-home:/root/.scan-o-matic
+      - somprojects:/somprojects
+      - /dev/bus/usb:/dev/bus/usb
+
+volumes:
+  scan-o-matic-home: {}
+  somprojects: {}

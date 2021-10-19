@@ -1,0 +1,560 @@
+__PLEASE NOTE THAT THIS IS ONLY KEPT FOR HISTORICAL REASONS.
+GIT TAGS/RELEASES ARE NOW USED AS CHANGELOG__
+
+
+  ###################################
+##### Changed in Scannomatic 0.999 #####
+   ###################################
+
+*** New Inspect Analysis Grid GUI
+
+  ###################################
+##### Changed in Scannomatic 0.998 #####
+   ###################################
+
+*** New GUI
+
+*** New Fixture Calibration
+
+*** New Gridding
+
+*** New relations between main program and experiments and analysis
+
+*** New structure in analysis
+
+*** Many many new things
+
+  ###################################
+##### Changed in Scannomatic 0.997 #####
+   ###################################
+
+*** Started rewriting of analysis GUI:s, going towards MVC-paradigm
+
+  ###################################
+##### Changed in Scannomatic 0.996 #####
+   ###################################
+
+*** Changed the gridding spikes detection
+
+*** Packaged variables pertaining to discrete part av analysis in dicts
+
+*** Moved some steps of analysis around so it is where it belongs
+
+*** Removed code that is not in use
+
+*** Started constructing unittests
+
+*** Restructured Blob Detection as a set of Classes in its own module
+    Also changed all of the algoritms that go into it
+
+*** Started mission to follow PEP8 standard
+
+*** Fixted so analysis project actually takes pinning string override directly
+    when toggled and not only when a pinning setting is changed
+
+  ###################################
+##### Changed in Scannomatic 0.995 #####
+   ###################################
+
+  ###################################
+##### Changed in Scannomatic 0.994 #####
+   ###################################
+
+*** Fixed buggs appearing when freash install is run
+
+*** Auto-update on versions works as well as on dev.
+
+  ###################################
+##### Changed in Scannomatic 0.993 #####
+   ###################################
+
+*** Auto-update works
+
+*** Reset instances counter possible
+
+*** Analysis writes the version of scan-o-matic to xml
+
+*** Nice settings gui that is integrated with the actual config settings of the program
+
+*** Minor adjustment to experiment pinning matrix dropdowns
+
+*** Running project analysis now reports if anything bad happened.
+
+*** Warning message if serveral instances of the program is running in parallell.
+
+*** runtime.log gets all logging messages and is overwritten at each start-up
+
+*** Changed the DMS of Scan-o-Matic to have better naming of where things
+    should be reported. Dialogs also take appropriate icons.
+
+*** Implemented custom uncaught exception hook
+
+*** Renamed Aquire One... to 'Drop Test'
+
+*** Added Pigmentation Scan feature
+
+*** Analysis corrects grids according to its knowledge of how it should be
+    if it gets odd results.
+
+*** Added manual grid to analysis / GUI and command line
+
+*** Implemented GUI for regridding
+
+*** Migrated number of scanners to main.config
+
+*** Implemented a Force Unclaim Scanner possibility
+
+*** Implemented an abort running analysis
+
+*** Implemented nicer program terminate to catch all ongoing processes.
+
+*** Moved the gridding out of the analysis-path so grids can be set manually
+
+*** Analysis script writes logging-info to the analysis.run - file of designated
+    output directory
+
+*** Fixture-configurations record the history of the top-left placement of the grid
+    per pinning-matrix format.
+
+*** Projects have UUID:s.
+
+*** Changed crash test dummy marker detection aglorithm so it is simple, faster
+    and robuster.
+
+  ###################################
+##### Changed in Scannomatic 0.992 #####
+   ###################################
+
+*** Improved messages when running experiments and single scans. Also tweaked and
+    fixed a bug or so.
+
+*** Improved robustness of orthalogical grayscale detection
+
+*** Improved Analyse One interface so it responds more 'correctly' to grayscale
+    detections
+
+*** Added nicer pinning matrix override GUI to analyse project
+
+*** Gridding now has safty-margin from edge of plate-section
+
+*** Changed the animation images
+
+*** Changed so trashed pixels also get a buffer around them on the background
+
+*** Changed so that blob is really a composite blob of all blobs that have
+    mass center inside the best blob.
+
+*** New Scan One dialog! Oh so nice...
+
+*** Centroid is not explicitly tracked for blobs and outputted into the
+    analysis.xml
+
+*** If grayscale 3rd deg polyfit produces a bad curve (that doesn't 
+    continously increase or decrease) for the range of interest, then
+    the grayscale fails
+
+*** Analyse One allows for measures in both spaces and using any fixture
+    to find grayscale.
+
+*** Fixture respond to what fixture is selected in start experiment!
+
+*** Fixture no longer causes file-crash if conf-file not correct.
+
+*** Fixture creation no longer requires program restart(s) to work properly
+
+*** Added XML-short form and omission of data from XML file that is
+    not of interest.
+
+*** Implemented a termination button
+
+*** Implemented support for several scanners connected to same computer
+    run in both on and several instances of the program
+
+*** Started using logging for better debugging. Also removes bugs that way.
+
+*** Revamped grayscale detection since it apparently wasn't stable enough.
+
+*** Implemented a project analysis gui
+
+*** Corrected bug in fixture-gui
+
+*** Start experiment GUI now understands fixtures and the analysis script 
+    by default use these to determine pinning matrices. A copy of the config 
+    file as it was at the time of scanning is also copied to the directory.
+
+*** Made GUI-function DMS redirect upwards towards scannomatic
+
+*** Fixture view is now decent.
+
+*** User guide for setting up experiment putting plates in right positions
+    implemented.
+
+*** Fixture GUI view is better now... not yet perfect
+
+*** Implemented grid-lock, that once set the grid stays where it is relative
+    to plate edges (this is probably less robust if plates are moved within
+    the fixture, but will probably produce less noise if plates stay in place)
+
+*** The identifier property of analysis-objects now is build as follows as
+    far as is applicable to a certain object:
+
+        [[time_index, plate], [row, column], cell-item]
+
+
+  ###################################
+##### Changed in Scannomatic 0.991 #####
+   ###################################
+
+*** Most files were renamed for better structure:
+ rename 2011.Scannomatic/src/{project.py => analysis.py} (99%)
+ rename 2011.Scannomatic/src/{grid_array.py => analysis_grid_array.py} (98%)
+ rename 2011.Scannomatic/src/{grid_array_analysis.py => analysis_grid_array_dissection.py} (99%)
+ rename 2011.Scannomatic/src/{grid_cell.py => analysis_grid_cell.py} (96%)
+ rename 2011.Scannomatic/src/{grid_cell_analysis.py => analysis_grid_cell_dissection.py} (99%)
+ rename 2011.Scannomatic/src/{colonies_wrapper.py => analysis_wrapper.py} (96%)
+ rename 2011.Scannomatic/src/{analysis.py => gui_analysis.py} (98%)
+ rename 2011.Scannomatic/src/{experiment.py => gui_experiment.py} (98%)
+ rename 2011.Scannomatic/src/{fixture.py => gui_fixture.py} (98%)
+ rename 2011.Scannomatic/src/{settings.py => gui_settings.py} (99%)
+ rename 2011.Scannomatic/src/{calibration.py => resource_calbration.py} (100%)
+ rename 2011.Scannomatic/src/{simple_conf.py => resource_config.py} (100%)
+ rename 2011.Scannomatic/src/{settings_tools.py => resource_fixture.py} (98%)
+ rename 2011.Scannomatic/src/{gs_plot.py => resource_gs_plot.py} (99%)
+ rename 2011.Scannomatic/src/{histogram.py => resource_histogram.py} (96%)
+ rename 2011.Scannomatic/src/{image_analysis_base.py => resource_image.py} (99%)
+ rename 2011.Scannomatic/src/{reject_script_2.py => resource_image_reject.py} (99%)
+ rename 2011.Scannomatic/src/{log_file_maker.py => resource_log_maker.py} (98%)
+ rename 2011.Scannomatic/src/{log_file_reader.py => resource_log_reader.py} (97%)
+ rename 2011.Scannomatic/src/{os_tools.py => resource_os.py} (98%)
+ rename 2011.Scannomatic/src/{power_manager.py => resource_power_manager.py} (99%)
+ rename 2011.Scannomatic/src/{sane.py => resource_sane.py} (99%)
+ rename 2011.Scannomatic/src/{twain.py => resource_twain.py} (99%)
+
+*** Headers were added to all .py-files
+
+*** Circularity measure possible and iterative threshold raising using blob
+    circularity as measure of good back-ground levels.
+
+*** Possible to monitor the gray-scale values
+
+*** Previous blob (t+1) detected is now tracked and the difference between 
+    current and previous is used to decide if detection failed and then the
+    blob detection from the previous time-point is used instead of the present.
+
+*** Analysis of project is now run in 'Cell Estimate Space' if 
+    calibration has been done.
+
+*** Background element of grid cell is now an eroded negative of
+    blob such that there's a buffer-zone inbetween the two belonging
+    to none of them.
+
+*** Calibration curve to transfer data from 'Kodak Value Space' to 
+    'Cell Estimate Space' done for BY4743 using ten randomly omitted
+    points as a test set and obtaining near 1:1 correlation between 
+    calculated cell estimate and independent measure.
+
+        y = 3.3797963108805451e-05x⁵ + 48.990614276885069x
+
+
+*** Corrected bug that turned stuff up-side-down when running watch on
+    a colony while producing analysis for a whole project.
+
+*** Made Analyse One GUI more self-explaining
+
+*** Calibration measures are no longer mean pixel-darkening, but vectors of
+    all pixels that corresponds to an independent cell count.
+
+*** In subracting background:mean negative values for blob in calibration
+    is not allowed.
+
+*** Cells now count as positive values relative to background
+
+*** Calibration point saving saves a representation of the Kodak Value Space-
+    vector that exactly represents the Cell Estimate
+
+*** Improved orthagonal grayscale detection to more robust methods.
+
+*** Changed the was median, IQR and IQR_mean is calculated to have
+    better control of these parameters.
+
+*** Corrected error and inefficient calculation of mean for the
+    different grid-items
+
+*** Included Unit Test code for grid placement by random removal of
+    spikes detected. Outcome is generally good, but wrong placement
+    happens frequently, but not always, when first or last true peak
+    is not detected. The R-correction should take care of it though.
+
+*** Grid R-value threshold increased as result of monitoring analysis.
+    Unit test code in place.
+
+*** Implementation of calibration.py started, based on file
+    calibration.data in src/config (created from taking measures
+    in Analyse One-view.
+
+  ##################################
+##### Changed in Scannomatic 0.99 #####
+   ##################################
+
+*** Gray-scale selection is now quite user-friendly
+
+*** Canvases are re-usable in analyse one and images that don't
+    match the fixture will now load and give users a one-chance
+    at selecting the gs-area manually.
+
+*** Analyse one view now gives values in Kodak value-space
+
+*** Manual blob selection is now much less annoying
+
+*** Manual blob selection in GUI-analysis implemented
+
+*** Interim semi-sophisticated blob detection implemented,
+    but only used through GUI-analysis
+
+*** Draggable selections implemented in the GUI-analysis view
+
+*** Manual size setting of selection in the GUI-analysis view
+
+*** The inter-scan calibration is now done using a fitted
+    3rd degree polynomial, currently translating pixel-values
+    to Kodak target values (to be changed for a cell count
+    estimate)
+
+*** Hard-coded into the analysis, the program uses the Kodak
+    gray-scale values.
+
+*** Change to user specifying output dir - not file in analysis
+    module
+
+*** Analysis script saves grid-placement as a file for certain 
+    time-points.
+
+*** Grid-detection re-written using no heuristics (?!) and 
+    producing much more robust grid-placement
+
+*** Converted the project.py command-line behaviour to use
+    argparser for increased user-friendliness. Added possibility
+    to track a colony through the time-series to investigate
+    the robustness of the analysis methods.
+
+*** Manual hardcoded xml production to reduce memory foot print.
+
+*** In xml <cells> and <cell> where changed to <grid-cells> and
+    <grid-cell>. <grid-cells>, <plates>, <scans> can only hold
+    <grid-cell>, <plate>, <scan> respectively.
+
+  ##################################
+##### Changed in Scannomatic 0.98 #####
+   ##################################
+
+*** Analysis is now done in grayscale-values and not pixel values
+
+*** Inserted <time></time> in xml per scan
+
+  ##################################
+##### Changed in Scannomatic 0.97 #####
+   ##################################
+
+*** Fixed some more bugs in analysis
+
+*** Bugs were fixed with grid array analysis.
+
+*** Signal from grid array analysis is now processed using
+    the frequency to account for missed spikes and false
+    positives.
+
+*** Recouperated the fixture settings so they work again
+
+*** Inserted a cutoff for how much the grid may change from time
+    to time, if more - it uses previous settings
+
+  ##################################
+##### Changed in Scannomatic 0.96 #####
+   ##################################
+
+*** Analysis modules were implemented for detecting the grid of
+    cells given a plate-rectangle.
+
+*** Entire project analysis was added, but not yet with a GUI
+
+*** Log file maker can now be run post scanning is complete and
+    will produce the same inforamtion about the images as
+    normal on the fly-logging. The first post with info on the
+    experiment cannot be created though.
+
+*** Included IQR mean as a measurement
+
+  ##################################
+##### Changed in Scannomatic 0.95 #####
+   ##################################
+
+*** Analyse One GUI now with interactive selection showing the
+    analysis of said selections with graphs and all.
+
+*** Fixture GUI refurnish started with interactive selection of
+    areas.
+
+*** Fixed experiment log writing so that no arrays are logged
+    (typecast as lists). Also, fixted so that the area-coordinates
+    are logged and not the pixels throughout the area
+
+*** Implemented Otsu thresholding as fallback blob detection method
+
+*** Made a config view
+
+*** Colonies analysis started
+
+  ##################################
+##### Changed in Scannomatic 0.94 #####
+   ##################################
+
+*** Implemented a DMS (print/log/gui-message handling function)
+    Started converting all print to DMS
+
+*** Made single scan be an experiment
+
+*** Interface for analysing one is there (no analysis is run yet)
+
+*** Matplotlib embedded canvases capture events.
+    (Still lacking the possibility to redraw nicely)
+
+*** Fixed bug that crashed the project log generation
+
+*** Fixed so that DMS-gui lets user know when image is comleted
+
+  ##################################
+##### Changed in Scannomatic 0.93 #####
+   ##################################
+
+*** Almost total restructuring of where code goes to make it more
+    modular.
+
+  ##################################
+##### Changed in Scannomatic 0.92 #####
+   ##################################
+
+*** Only marker detection is done at 150 dpi, grayscale detection
+    and output of coordinates is done at 600 dpi
+
+*** Labels have a nice max-width so GUI behaves better
+
+*** Made create experiment section more flexible
+
+*** All plate-areas are written to log-file
+
+*** Added numeric pattern support in simple_conf
+
+  ##################################
+##### Changed in Scannomatic 0.91 #####
+   ##################################
+
+*** Log Maker puts timestamp for each entry which more or less
+    equals the time at scanning plus some seconds
+
+*** Fixed bugs in grayscale analysis
+
+*** Analysis understands image scaling (so you can find markers
+    on downsized version and then extract sections in the full
+    scale image)
+
+*** Locked scanning when experiment is running,
+    in principle there's only support for one scanner still
+
+*** Scan one image is now saying that it does something and
+    behaves better in general
+
+*** Impossible to start two experiments (one the same scanner)
+
+*** simple_conf now reads the logfiles and just indexes every
+    entry starting at zero for the first
+
+*** Nicer not yet implemented features
+
+  #################################
+##### Changed in Scannomatic 0.9 #####
+   #################################
+
+*** Grayscale is now in scale section on X-axis
+
+*** Application has a config file and knows its
+    relevant paths
+
+*** Data is no longer stored where the application is
+    (if you don't happen to actually want that)
+
+*** Only one configuration view is visible at a time
+
+*** Changed shutdown and rescan delay from 10s to 20s
+
+*** Experiment saves marker positions and grayscale data.
+
+  #################################
+##### Changed in Scannomatic 0.8 #####
+   #################################
+
+*** Automatic gray-scale aqcuired
+
+  #################################
+##### Changed in Scannomatic 0.7 #####
+   #################################
+
+*** Image offsetting and rotation in relation of fixture markings
+    Has not been debugged
+
+*** Made a class out of the fixture making and a subclass for the fixture
+    settings
+
+*** Included more configurations to fixtures and better GUI behaviour
+
+*** An 'Analyse One Image' GUI is in dev. It produces strange slices of 
+    the image.
+
+  #################################
+##### Changed in Scannomatic 0.6 #####
+   #################################
+
+*** Automatic detection of markers done in 150dpi which give better results 
+    and also at low process cost
+
+*** Fixtures have a GUI for their setup and marking of zones in the image
+    so that all fixture elements can be specified, in prototype mode though
+
+*** Config File module implemented
+
+  #################################
+##### Changed in Scannomatic 0.5 #####
+   #################################
+
+*** Automatic detection of orientation markers done in high-res, needs to be
+    scaled down to low-res due to CPU time it takes.
+
+*** Linux-mode also produces log file and generates a histogram graph on the
+    fly
+
+  #################################
+##### Changed in Scannomatic 0.4 #####
+   #################################
+
+*** The file scannomatic.py was split up into sub-modules (in directory src)
+*   There might be bugs in windows from this, not yet dealt with
+
+*** Directory images was created under source holding suggested markings for
+    automatic fixture orientation (and maybe fixture version detection)
+
+*** Linux scanning routines are now created as subprocess during experiments.
+    That makes the program user friendly, and work with several scanners.
+
+*** Image analysis of orientation through marker detection started. Far from
+    done though (image_deconstruction.py)
+
+  #################################
+##### Changed in Scannomatic 0.3 #####
+   #################################
+
+*** File naming format changed to leading zeros making lexical ordering simpler
+
+*** CHANGELOG established
+
+*** INSTALL established
+
+

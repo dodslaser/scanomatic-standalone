@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.9
 """Part of analysis work-flow that holds a grid arrays"""
 import os
 
@@ -13,13 +13,13 @@ __status__ = "Development"
 __branch = "dev"
 
 
-def get_version():
+def get_version() -> str:
     return __version__
 
 
-def get_branch():
+def get_branch() -> str:
     return __branch
 
 
-def get_location():
+def get_location() -> str:
     return os.path.dirname(__file__)

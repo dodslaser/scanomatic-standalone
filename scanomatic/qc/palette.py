@@ -4,11 +4,11 @@ from itertools import permutations
 try:
     from matplotlib import colors as mplColors
     MATPLOTLIB = True
-except:
+except ImportError:
     MATPLOTLIB = False
 
 
-def get(N, **kwargs):
+def get(N: int, **kwargs):
     """Generator that produces a colorseries of length N.
 
     Parameters:
@@ -28,17 +28,15 @@ def get(N, **kwargs):
             colors will be sampled.
     """
 
-    if ('base' in kwargs and MATPLOTLIB and
-            isinstance(kwargs['base'], mplColors.Colormap)):
-
-        for n in xrange(N):
-
+    if (
+        'base' in kwargs and MATPLOTLIB and
+        isinstance(kwargs['base'], mplColors.Colormap)
+    ):
+        for n in range(N):
             yield kwargs['base'](n * float(kwargs['base'].N) / N)
 
     else:
-
         if 'base' not in kwargs:
-
             random.seed()
             kwargs['base'] = [random.random() for x in range(3)]
 
@@ -47,16 +45,14 @@ def get(N, **kwargs):
         else:
             alpha = None
 
-        l = sum([v ** 2 for v in kwargs['base'][:3]]) ** 0.5
-        cV = [v / l for v in kwargs['base'][:3]]
+        summary = sum([v ** 2 for v in kwargs['base'][:3]]) ** 0.5
+        cV = [v / summary for v in kwargs['base'][:3]]
         maxV = float(max(cV))
         cV = [v / maxV for v in cV]
         n = 0
 
         while True:
-
             for v in permutations(cV):
-
                 if n < N:
                     if alpha is not None:
                         yield tuple(v) + (alpha, )
@@ -69,5 +65,4 @@ def get(N, **kwargs):
 
             if n >= N:
                 break
-
             cV = [0.5 * v for v in cV]

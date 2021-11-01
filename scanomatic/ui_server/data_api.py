@@ -3,7 +3,7 @@ import os
 import shutil
 from configparser import Error as ConfigError
 from enum import Enum
-from types import DictType, ListType, StringTypes
+from typing import Mapping, Sequence
 
 import numpy as np
 from flask import jsonify, request, send_from_directory
@@ -12,6 +12,8 @@ from scanomatic.data_processing import phenotyper
 from scanomatic.data_processing.calibration import (
     get_polynomial_coefficients_from_ccc
 )
+from scanomatic.data_processing.norm import NormState
+from scanomatic.data_processing.project import path_has_saved_project_state
 from scanomatic.image_analysis.first_pass_image import FixtureImage
 from scanomatic.image_analysis.grayscale import getGrayscale, getGrayscales
 from scanomatic.image_analysis.grid_cell import GridCell
@@ -52,7 +54,7 @@ _logger = Logger("Data API")
 
 def _depth(arr, lvl=1):
 
-    if isinstance(arr, ListType) and len(arr) and isinstance(arr[0], ListType):
+    if isinstance(arr, Sequence) and len(arr) and isinstance(arr[0], Sequence):
         _depth(arr[0], lvl + 1)
     else:
         return lvl
@@ -75,9 +77,9 @@ def json_data(data):
         return None
     elif hasattr(data, "tolist"):
         return json_data(data.tolist())
-    elif isinstance(data, ListType):
+    elif isinstance(data, Sequence):
         return [json_data(d) for d in data]
-    elif isinstance(data, DictType):
+    elif isinstance(data, Mapping):
         return {json_data(k): json_data(data[k]) for k in data}
     elif isinstance(data, Enum):
         return data.name
@@ -200,7 +202,7 @@ def add_routes(app, rpc_client, is_debug_mode):
                 phenotypes_normed={
                     pheno.name: [p.tojson() for p in state.get_phenotype(
                         pheno,
-                        norm_state=phenotyper.NormState.NormalizedRelative,
+                        norm_state=NormState.NormalizedRelative,
                     )] for pheno in state.phenotypes_that_normalize
                 },
                 curve_phases=json_data(curve_segments))
@@ -623,7 +625,7 @@ def add_routes(app, rpc_client, is_debug_mode):
         markers = get_2d_list(request.values, 'markers')
 
         if not markers and isinstance(
-                request.values.get('markers', default=None), StringTypes):
+                request.values.get('markers', default=None), str):
 
             _logger.warning(
                 "Attempting fallback string parsing of markers as text",
@@ -1083,7 +1085,7 @@ def add_routes(app, rpc_client, is_debug_mode):
 
             json_abort(400, reason='Invalid project')
 
-        is_project_analysis = phenotyper.path_has_saved_project_state(path)
+        is_project_analysis = path_has_saved_project_state(path)
 
         if not os.path.isfile(path) or not path.endswith(".log"):
 

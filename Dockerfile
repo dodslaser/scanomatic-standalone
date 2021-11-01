@@ -4,11 +4,16 @@ WORKDIR /src
 RUN npm install
 RUN npm run build
 
-FROM ubuntu:18.04
-RUN apt update && apt -y install usbutils software-properties-common python-pip
+FROM python:3.9
+RUN apt-get update
+RUN export DEBIAN_FRONTEND=noninteractive \
+    && ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime \
+    && apt-get install -y tzdata \
+    && dpkg-reconfigure --frontend noninteractive tzdata
+RUN apt-get -y install usbutils software-properties-common
 # net-tools & iputils-ping are used in the xml-writer which should be removed soon
-RUN apt -y install net-tools iputils-ping
-RUN apt -y install libsane sane-utils libsane-common
+RUN apt-get -y install net-tools iputils-ping
+RUN apt-get -y install libsane sane-utils libsane-common
 # Add scanner id to sane config in case scanimage -L cannot find the scanner automatically
 # Epson V800
 RUN echo "usb 0x4b8 0x12c" >> /etc/sane.d/epson2.conf
@@ -26,6 +31,6 @@ COPY setup_tools.py /tmp/setup_tools.py
 COPY get_installed_version.py /tmp/get_installed_version.py
 COPY --from=npmbuilder /src/scanomatic/ui_server_data/js/ccc.js /tmp/scanomatic/ui_server_data/js/ccc.js
 
-RUN cd /tmp && python setup.py install --default
+RUN cd /tmp && python3.9 setup.py install --default
 CMD scan-o-matic --no-browser
 EXPOSE 5000

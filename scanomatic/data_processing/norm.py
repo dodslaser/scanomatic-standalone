@@ -1,5 +1,4 @@
 from enum import Enum
-from types import StringTypes
 from typing import Literal, Optional, Sequence
 
 import numpy as np
@@ -17,6 +16,37 @@ from scipy.stats import pearsonr
 from scanomatic.data_processing.data_bridge import Data_Bridge
 from scanomatic.generics.maths import mid50_mean
 from scanomatic.generics.phenotype_filter import Filter, FilterArray
+
+
+class NormState(Enum):
+    """Spatial bias normalisation state in data
+
+    Attributes:
+        NormState.Absolute:
+            Data is as produced by phenotype extraction.
+            This includes spatial 2D bias
+        NormState.NormalizedRelative:
+            Data is log_2 normalized relative values or
+            strain coefficients. This relates to the LSC values
+            in Warringer (2003) but there are slight differences.
+        NormState.NormalizedAbsoluteBatched:
+            This is a plate-wise recalculation of absolute values
+            based on the `NormState.NormalizedRelative` values and
+            the median `NormState.Absolute` value of the reference
+            positions.
+            *Note that this reintroduces plate-wise batch effects,
+            so it is only recommended if all experiments for a given
+            environment were done on a single plate*
+        NormState.NormalizedAbsoluteNonBatched:
+            This is a global recalculation of absolute values
+            based on the `NormState.NormalizedRelative` values and
+            a supplied mean of all comparable plate-median reference position
+            `NormState.Absolute` values.
+    """
+    Absolute = 0
+    NormalizedRelative = 1
+    NormalizedAbsoluteBatched = 2
+    NormalizedAbsoluteNonBatched = 3
 
 
 class Offsets(Enum):
@@ -88,7 +118,7 @@ def get_downsampled_plates(
     """
 
     # Generic -> Per plate
-    if isinstance(subsampling, StringTypes):
+    if isinstance(subsampling, str):
         subsampling = [subsampling for _ in range(data.shape[0])]
 
         # Lookup to translate subsamplingexpressions to coordinates
@@ -150,7 +180,6 @@ def get_control_position_filtered_arrays(
         fill_value:
             Value to fill non control positions with
     """
-
     if isinstance(data, Data_Bridge):
         data = data.get_as_array()
     else:
@@ -174,8 +203,12 @@ def get_control_position_filtered_arrays(
         plate_offset = offsets[id_plate]
         filt = np.tile(
             plate_offset,
-            [a / b for a, b in zip(new_plate.shape, plate_offset.shape)],
+            [
+                int(np.ceil(a / b))
+                for a, b in zip(new_plate.shape, plate_offset.shape)
+            ],
         )
+        filt = filt[:new_plate.shape[0], :new_plate.shape[1]]
         new_plate[filt == False] = fill_value  # noqa: E712
 
     return np.array(out)
@@ -541,7 +574,9 @@ def apply_outlier_filter(
             return item[kernel_center]
 
     if median_filter_size is not None:
-        kernel_center = (np.prod(median_filter_size) - 1) / 2
+        kernel_center = np.round(
+            (np.prod(median_filter_size) - 1) / 2
+        ).astype(np.int16)
         assert np.array(
             [v % 2 == 1 for v in median_filter_size],
         ).all(), "nanFillSize can only have odd values"

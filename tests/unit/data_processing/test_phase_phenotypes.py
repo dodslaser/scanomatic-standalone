@@ -1,20 +1,18 @@
-import pytest
-from scanomatic.data_processing.phases.analysis import (
-    _locate_segment, get_data_needed_for_segmentation, DEFAULT_THRESHOLDS,
-    segment, _phenotype_phases, CurvePhasePhenotypes,
-    assign_linear_phase_phenotypes, assign_common_phase_phenotypes,
-    assign_non_linear_phase_phenotypes
-)
-
-from scanomatic.data_processing.phenotyper import Phenotyper
 import numpy as np
+import pytest
 
-"""
-@pytest.fixture(scope='session')
-def setup_something(tmpdir_factory):
-    pass
-
-"""
+from scanomatic.data_processing.phases.analysis import (
+    DEFAULT_THRESHOLDS,
+    CurvePhasePhenotypes,
+    _locate_segment,
+    _phenotype_phases,
+    assign_common_phase_phenotypes,
+    assign_linear_phase_phenotypes,
+    assign_non_linear_phase_phenotypes,
+    get_data_needed_for_segmentation,
+    segment
+)
+from scanomatic.data_processing.phenotyper import Phenotyper
 
 
 def build_test_phenotyper():
@@ -43,7 +41,7 @@ def build_test_phenotyper():
     ]]], ndmin=4)
 
     phenotyper_object = Phenotyper(y_data, x_data)
-    phenotyper_object._smooth_growth_data = y_data
+    phenotyper_object.state.smooth_growth_data = y_data
 
     return phenotyper_object
 

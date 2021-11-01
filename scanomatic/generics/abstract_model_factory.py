@@ -21,7 +21,7 @@ class UnserializationError(ValueError):
 
 def float_list_serializer(enforce=None, serialize=None):
     if enforce is not None:
-        if isinstance(enforce, (str,)):
+        if isinstance(enforce, str):
             try:
                 return [float(m.strip()) for m in enforce.split(",")]
             except ValueError:
@@ -38,7 +38,7 @@ def float_list_serializer(enforce=None, serialize=None):
 
     elif serialize is not None:
 
-        if isinstance(serialize, (str,)):
+        if isinstance(serialize, str):
             return serialize
         else:
             try:
@@ -52,7 +52,7 @@ def float_list_serializer(enforce=None, serialize=None):
 
 def email_serializer(enforce=None, serialize=None):
     if enforce is not None:
-        if isinstance(enforce, (str,)):
+        if isinstance(enforce, str):
             return [m.strip() for m in enforce.split(",")]
         elif isinstance(enforce, list):
             return [str(e) for e in enforce if e]
@@ -60,7 +60,7 @@ def email_serializer(enforce=None, serialize=None):
             return list(enforce)
 
     elif serialize is not None:
-        if isinstance(serialize, (str,)):
+        if isinstance(serialize, str):
             return serialize
         elif isinstance(serialize, list):
             return ", ".join(serialize)
@@ -151,21 +151,23 @@ class AbstractModelFactory:
     def __new__(cls, *args):
         raise Exception("This class is static, can't be instantiated")
 
-    class __metaclass__(type):
-        @property
-        def logger(cls) -> Logger:
-            if cls._LOGGER is None:
-                cls._LOGGER = Logger(cls.__name__)
+    @classmethod
+    @property
+    def logger(cls) -> Logger:
+        if cls._LOGGER is None:
+            cls._LOGGER = Logger(cls.__name__)
 
-            return cls._LOGGER
+        return cls._LOGGER
 
-        @property
-        def serializer(cls) -> "Serializer":
-            return Serializer(cls)
+    @classmethod
+    @property
+    def serializer(cls) -> "Serializer":
+        return Serializer(cls)
 
-        @property
-        def default_model(cls) -> Model:
-            return cls.MODEL()
+    @classmethod
+    @property
+    def default_model(cls) -> Model:
+        return cls.MODEL()
 
     @classmethod
     def get_sub_factory(cls, model):
@@ -574,7 +576,7 @@ class AbstractModelFactory:
 
     @staticmethod
     def _is_file(path):
-        return isinstance(path, (str,)) and os.path.isfile(path)
+        return isinstance(path, str) and os.path.isfile(path)
 
     @staticmethod
     def _is_tuple_or_list(obj):
@@ -1124,7 +1126,7 @@ class Serializer:
 
     def get_section_name(self, model):
 
-        if isinstance(self._factory.STORE_SECTION_HEAD, (str,)):
+        if isinstance(self._factory.STORE_SECTION_HEAD, str):
             return self._factory.STORE_SECTION_HEAD
         elif isinstance(self._factory.STORE_SECTION_HEAD, list):
             heads = [
@@ -1312,7 +1314,7 @@ class SerializationHelper:
     def get_config(path) -> LinkerConfigParser:
         conf = LinkerConfigParser(id=path, allow_no_value=True)
 
-        if isinstance(path, (str,)):
+        if isinstance(path, str):
             try:
                 with open(path, 'r') as fh:
                     conf.readfp(fh)

@@ -1,5 +1,6 @@
-import py.path
-import pytest
+from pathlib import Path
+
+import pytest  # type: ignore
 import requests
 from selenium import webdriver
 
@@ -8,7 +9,7 @@ from selenium import webdriver
 def docker_compose_file(pytestconfig):
     return [
         pytestconfig.rootdir.join('docker-compose.yml'),
-        py.path.local(__file__).dirpath().join('docker-compose.override.yml'),
+        Path(__file__).parent.join('docker-compose.override.yml'),
     ]
 
 
@@ -34,7 +35,7 @@ def scanomatic(docker_ip, docker_services):
 
 
 @pytest.fixture(
-    'function',
+    scope='function',
     ids=['chrome', 'firefox'],
     params=[webdriver.Chrome, webdriver.Firefox],
 )

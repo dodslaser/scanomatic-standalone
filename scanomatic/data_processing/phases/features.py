@@ -704,6 +704,9 @@ class PhaseSide(Enum):
 
 
 def get_phase_phenotypes_aligned(phenotypes, plate):
+    """
+    phenotypes: A Phenotyper instance (but circular import if typed)
+    """
     # TODO: 1. Make own module
     # TODO: 2. Support multiple plates and files, for this the global end_time
     # should be used
@@ -921,7 +924,7 @@ def get_phase_phenotypes_aligned(phenotypes, plate):
             ) / float(end - start)
 
     end_time = phenotypes.times.max()
-    plate_data = phenotypes._vector_phenotypes[plate][
+    plate_data = phenotypes.state.vector_phenotypes[plate][
         VectorPhenotypes.PhasesPhenotypes
     ]
     filt = phenotypes.get_curve_qc_filter(plate)

@@ -1,5 +1,3 @@
-from types import StringTypes
-
 import scanomatic.models.rpc_job_models as rpc_job_models
 from scanomatic.generics.abstract_model_factory import AbstractModelFactory
 from scanomatic.generics.model import Model
@@ -47,7 +45,7 @@ class RPC_Job_Model_Factory(AbstractModelFactory):
 
     @classmethod
     def _validate_id(cls, model: rpc_job_models.RPCjobModel):
-        if isinstance(model.id, StringTypes):
+        if isinstance(model.id, str):
             return True
         return model.FIELD_TYPES.id
 

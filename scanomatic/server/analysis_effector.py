@@ -61,11 +61,22 @@ class AnalysisEffector(proc_effector.ProcessEffector):
     TYPE = JOB_TYPE.Analysis
 
     def __init__(self, job: RPCjobModel):
-        # sys.excepthook = support.custom_traceback
+
+        if job.content_model:
+            self._analysis_job = AnalysisModelFactory.create(
+                **job.content_model,
+            )
+        else:
+            self._analysis_job = AnalysisModelFactory.create()
+            self._logger.warning("No job instructions")
 
         super(AnalysisEffector, self).__init__(
             job,
-            logger_name="Analysis Effector"
+            logger_name="Analysis Effector",
+            logging_target=os.path.join(
+                self._analysis_job.output_directory,
+                Paths().analysis_run_log,
+            )
         )
         self._config = None
         self._job_label = get_label_from_analysis_model(
@@ -75,19 +86,9 @@ class AnalysisEffector(proc_effector.ProcessEffector):
 
         self._specific_statuses['total'] = 'total'
         self._specific_statuses['current_image_index'] = 'current_image_index'
-
         self._allowed_calls['setup'] = self.setup
 
-        self._redirect_logging = True
         self._reference_compilation_image_model = None
-
-        if job.content_model:
-            self._analysis_job = AnalysisModelFactory.create(
-                **job.content_model,
-            )
-        else:
-            self._analysis_job = AnalysisModelFactory.create()
-            self._logger.warning("No job instructions")
 
         self._original_model = None
         self._job.content_model = self._analysis_job
@@ -308,27 +309,6 @@ class AnalysisEffector(proc_effector.ProcessEffector):
                 )
                 raise StopIteration
 
-        if self._redirect_logging:
-            self._logger.info(
-                "{0} is setting up, output will be directed to {1}".format(
-                    self._analysis_job,
-                    Paths().analysis_run_log,
-                ),
-            )
-
-            log_path = os.path.join(
-                self._analysis_job.output_directory,
-                Paths().analysis_run_log,
-            )
-            self._logger.set_output_target(
-                log_path,
-                catch_stdout=True,
-                catch_stderr=True,
-                buffering=0,
-            )
-            self._logger.surpress_prints = False
-            self._log_file_path = log_path
-
         if (
             len(self._first_pass_results.plates)
             != len(self._analysis_job.pinning_matrices)
@@ -429,13 +409,11 @@ class AnalysisEffector(proc_effector.ProcessEffector):
 
         remove_state_from_path(self._analysis_job.output_directory)
 
-    def setup(self, job, redirect_logging=True):
+    def setup(self, job):
 
         if self._running:
             self.add_message("Cannot change settings while running")
             return
-
-        self._redirect_logging = redirect_logging
 
         if not self._analysis_job.output_directory:
             AnalysisModelFactory.set_default(

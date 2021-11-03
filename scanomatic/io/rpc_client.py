@@ -1,12 +1,12 @@
 import enum
 import socket
-from typing import Optional
 import xmlrpc.client
+from logging import Logger
 from subprocess import Popen
 from types import GeneratorType
+from typing import Optional
 
 import scanomatic.io.app_config as app_config
-import scanomatic.io.logger as logger
 
 
 def sanitize_communication(obj):
@@ -53,12 +53,11 @@ def get_client(host=None, port=None, admin=False, log_level=None):
 
 
 class _ClientProxy(object):
-
     def __init__(self, host, port, userID=None, log_level=None):
 
-        self._logger = logger.Logger("Client Proxy")
+        self._logger = Logger("Client Proxy")
         if log_level is not None:
-            self._logger.level = log_level
+            self._logger.setLevel(log_level)
         self._userID = userID
         self._adminMethods = (
             'communicateWith',

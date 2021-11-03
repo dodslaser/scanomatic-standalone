@@ -231,19 +231,23 @@ class ScannerEffector(proc_effector.ProcessEffector):
     WAIT_FOR_NEXT_SCAN = 1.0
 
     def __init__(self, job):
-        # sys.excepthook = support.custom_traceback
+        self._scanning_job: ScanningModel = job.content_model
+        logging_target = os.path.join(
+            self._project_directory,
+            paths.Paths().scan_log_file_pattern.format(
+                self._scanning_job.project_name,
+            ),
+        )
         super(ScannerEffector, self).__init__(
             job,
             logger_name="Scanner Effector",
+            logging_target=logging_target,
         )
 
         self._specific_statuses['total'] = 'total_images'
         self._specific_statuses['currentImage'] = 'current_image'
-
         self._allowed_calls['setup'] = self.setup
         self._allowed_calls[JOBS_CALL_SET_USB] = self._set_usb_port
-
-        self._scanning_job: ScanningModel = job.content_model
 
         self._scanning_effector_data = ScanningModelEffectorData()
         self._rpc_client = rpc_client.get_client(admin=True)
@@ -284,27 +288,6 @@ class ScannerEffector(proc_effector.ProcessEffector):
         self._scanning_job.id = job.id
         self._scanning_job.computer = AppConfig().computer_human_name
         self._setup_directory()
-
-        if redirect_logging:
-            file_path = os.path.join(
-                self._project_directory,
-                paths_object.scan_log_file_pattern.format(
-                    self._scanning_job.project_name,
-                ),
-            )
-            self._logger.info(
-                "{0} is setting up; logging will be directed to file {1}".format(  # noqa: E501
-                    job,
-                    file_path,
-                ),
-            )
-            self._logger.set_output_target(
-                file_path,
-                catch_stdout=True,
-                catch_stderr=True
-            )
-            self._log_file_path = file_path
-            self._logger.surpress_prints = False
 
         self._logger.info("Doing setup")
 

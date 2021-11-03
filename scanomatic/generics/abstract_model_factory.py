@@ -2,17 +2,17 @@ import copy
 import os
 import pickle
 import types
-from typing import Dict, Generator, Union
 import warnings
 from collections import defaultdict
 from configparser import ConfigParser, NoSectionError
 from enum import Enum
+from logging import Logger
 from numbers import Real
 from types import GeneratorType
+from typing import Dict, Generator, Union
 
 import scanomatic.generics.decorators as decorators
 from scanomatic.generics.model import Model
-from scanomatic.io.logger import Logger
 
 
 class UnserializationError(ValueError):
@@ -765,7 +765,7 @@ class LinkerConfigParser(ConfigParser):
         return (
             self._nonzero
             if hasattr(self, '_nonzero')
-            else len(self.sections())
+            else len(self.sections()) > 0
         )
 
 
@@ -928,7 +928,7 @@ class Serializer:
         with SerializationHelper.get_config(None) as conf:
             return SerializationHelper.save_config(conf, path)
 
-    def load(self, path):
+    def load(self, path) -> tuple:
         with SerializationHelper.get_config(path) as conf:
             if conf:
                 return tuple(self._unserialize(conf))

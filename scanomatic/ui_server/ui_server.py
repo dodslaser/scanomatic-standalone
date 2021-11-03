@@ -2,15 +2,14 @@ import os
 import time
 import webbrowser
 from socket import error
-from threading import Thread, Timer
+from threading import Thread
 
 import requests
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 
 from scanomatic.io.app_config import Config
-from scanomatic.io.backup import backup_file
-from scanomatic.io.logger import LOG_RECYCLE_TIME, Logger
+from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.io.rpc_client import get_client
 from scanomatic.io.scanstore import ScanStore
@@ -31,21 +30,11 @@ from . import (
 )
 
 _URL = None
-_LOGGER = Logger("UI-server")
+_LOGGER = get_logger(
+    "UI-server",
+    Paths().log_ui_server,
+)
 _DEBUG_MODE = None
-
-
-def init_logging():
-
-    _LOGGER.pause()
-    backup_file(Paths().log_ui_server)
-    _LOGGER.set_output_target(
-        Paths().log_ui_server,
-        catch_stdout=_DEBUG_MODE is False,
-        catch_stderr=_DEBUG_MODE is False,
-    )
-    _LOGGER.surpress_prints = _DEBUG_MODE is False
-    _LOGGER.resume()
 
 
 def launch_server(host, port, debug):
@@ -66,13 +55,9 @@ def launch_server(host, port, debug):
         host = Config().ui_server.host
 
     _URL = f"http://{host}:{port}"
-    init_logging()
     _LOGGER.info(
-        "Requested to launch UI-server at {_URL} being debug={debug}",
+        f"Requested to launch UI-server at {_URL} being debug={debug}",
     )
-
-    app.log_recycler = Timer(LOG_RECYCLE_TIME, init_logging)
-    app.log_recycler.start()
 
     add_resource_routes(app, rpc_client)
 

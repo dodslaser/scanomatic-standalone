@@ -5,12 +5,11 @@ from typing import Any, Dict
 
 import scanomatic.generics.decorators as decorators
 import scanomatic.io.app_config as app_config
-import scanomatic.io.logger as logger
 import scanomatic.io.scanner_manager as scanner_manager
 import scanomatic.models.rpc_job_models as rpc_job_models
 import scanomatic.server.jobs as jobs
 import scanomatic.server.queue as queue
-from scanomatic.io.backup import backup_file
+from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.io.resource_status import Resource_Status
 from scanomatic.models.factories.rpc_job_factory import RPC_Job_Model_Factory
@@ -21,9 +20,10 @@ class Server:
 
         config = app_config.Config()
 
-        self.logger = logger.Logger("Server")
-        self._cycle_log_time = 0
-        self._init_logging()
+        self.logger = get_logger(
+            "Server",
+            Paths().log_server,
+        )
 
         self.admin = config.rpc_server.admin
         self._running = False
@@ -35,19 +35,6 @@ class Server:
         self._queue = queue.Queue(self._jobs)
 
         self._scanner_manager = scanner_manager.ScannerPowerManager()
-
-    @property
-    def _is_time_to_cycle_log(self) -> float:
-        return time.time() - self._cycle_log_time > logger.LOG_RECYCLE_TIME
-
-    def _init_logging(self):
-
-        backup_file(Paths().log_server)
-        self.logger.set_output_target(
-            Paths().log_server,
-            catch_stdout=True, catch_stderr=True)
-        self.logger.surpress_prints = True
-        self._cycle_log_time = time.time()
 
     @property
     def scanner_manager(self) -> scanner_manager.ScannerPowerManager:
@@ -145,8 +132,6 @@ class Server:
                 self._scanner_manager.update()
             else:
                 self._jobs.sync()
-                if self._is_time_to_cycle_log:
-                    self._init_logging()
 
             time.sleep(sleep)
             i += 1

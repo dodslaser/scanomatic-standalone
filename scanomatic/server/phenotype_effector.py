@@ -31,13 +31,17 @@ class PhenotypeExtractionEffector(proc_effector.ProcessEffector):
     def __init__(self, job):
 
         self._paths = paths.Paths()
-
+        self._feature_job: FeaturesModel = job.content_model
+        logging_target = os.path.join(
+            self._feature_job.analysis_directory,
+            paths.Paths().phenotypes_extraction_log,
+        )
         super(PhenotypeExtractionEffector, self).__init__(
             job,
             logger_name="Phenotype Extractor '{0}'".format(job.id),
+            logging_target=logging_target,
         )
 
-        self._feature_job: FeaturesModel = job.content_model
         self._job_label = self._feature_job.analysis_directory
         self._progress: float = 0.
         self._times = None
@@ -70,19 +74,6 @@ class PhenotypeExtractionEffector(proc_effector.ProcessEffector):
         else:
             self._logger.warning("Can't setup, instructions don't validate")
             return False
-
-        log_path = os.path.join(
-            self._feature_job.analysis_directory,
-            paths.Paths().phenotypes_extraction_log
-        )
-        self._logger.set_output_target(
-            log_path,
-            catch_stdout=True,
-            catch_stderr=True,
-        )
-        self._log_file_path = log_path
-
-        self._logger.surpress_prints = False
 
         self._logger.info("Loading files image data from '{0}'".format(
             self._feature_job.analysis_directory,

@@ -1,13 +1,12 @@
+import PropTypes from 'prop-types';
 import React from 'react';
 
 import c3 from 'c3';
 import 'c3/c3.min.css';
 
 import { valueFormatter } from '../helpers.js';
-import CCCPropTypes from '../prop-types';
 
 const labelFormatter = value => value.toFixed(0);
-
 
 export default class PolynomialResultsColonyHistogram extends React.Component {
   constructor(props) {
@@ -97,7 +96,7 @@ export default class PolynomialResultsColonyHistogram extends React.Component {
   }
 
   render() {
-    const { independentMeasurement, colonyIdx } = this.props;
+    const { independentMeasurements, colonyIdx } = this.props;
 
     return (
       <div className="poly-colony-container">
@@ -106,10 +105,18 @@ export default class PolynomialResultsColonyHistogram extends React.Component {
           ref={this.refBinder}
           id={`poly-colony-chart-${colonyIdx}`}
         />
-        <span className="poly-colony-txt">{valueFormatter(independentMeasurement, 2)} cells</span>
+        <span className="poly-colony-txt">{valueFormatter(independentMeasurements, 2)} cells</span>
       </div>
     );
   }
 }
 
-PolynomialResultsColonyHistogram.propTypes = CCCPropTypes.colonyShape;
+PolynomialResultsColonyHistogram.propTypes = {
+  colonyIdx: PropTypes.number.isRequired,
+  pixelValues: PropTypes.arrayOf(PropTypes.number).isRequired,
+  pixelCounts: PropTypes.arrayOf(PropTypes.number).isRequired,
+  independentMeasurements: PropTypes.number.isRequired,
+  maxCount: PropTypes.number.isRequired,
+  maxPixelValue: PropTypes.number.isRequired,
+  minPixelValue: PropTypes.number.isRequired,
+};

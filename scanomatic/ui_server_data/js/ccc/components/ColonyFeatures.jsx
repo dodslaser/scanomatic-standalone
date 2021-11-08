@@ -1,7 +1,7 @@
-import PropTypes from 'prop-types';
 import React from 'react';
 
 import { createCanvasMarker, featureColors } from '../helpers';
+import CCCPropTypes from '../prop-types';
 
 export default class ColonyFeatures extends React.Component {
   componentDidMount() {
@@ -18,9 +18,9 @@ export default class ColonyFeatures extends React.Component {
 
   render() {
     const legend = [
-      { color: featureColors.blob.toCSSString(), text: "Blob" },
-      { color: featureColors.background.toCSSString(), text: "Background" },
-      { color: featureColors.neither.toCSSString(), text: "Neither" },
+      { color: featureColors.blob.toCSSString(), text: 'Blob' },
+      { color: featureColors.background.toCSSString(), text: 'Background' },
+      { color: featureColors.neither.toCSSString(), text: 'Neither' },
     ];
 
     const style = {
@@ -47,5 +47,5 @@ export default class ColonyFeatures extends React.Component {
   }
 }
 ColonyFeatures.propTypes = {
-  data: PropTypes.object.isRequired,
+  data: CCCPropTypes.colonyDataShape.isRequired,
 };

@@ -1,6 +1,8 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 
+import CCCPropTypes from '../prop-types';
+
 export default class ImageUpload extends React.Component {
   constructor(props) {
     super(props);
@@ -16,13 +18,14 @@ export default class ImageUpload extends React.Component {
     let inputOrProgress;
     if (this.props.progress) {
       const progressWidth =
-                (this.props.progress.now / this.props.progress.max * 100);
+                100 * (this.props.progress.now / this.props.progress.max);
       inputOrProgress = (
         <div>
           <div className="progress">
             <div
               className="progress-bar"
-              style={{ width: `${progressWidth}%` }} />
+              style={{ width: `${progressWidth}%` }}
+            />
           </div>
           {this.props.progress.text}
         </div>
@@ -43,10 +46,9 @@ export default class ImageUpload extends React.Component {
 
 ImageUpload.propTypes = {
   onImageChange: PropTypes.func.isRequired,
-  image: PropTypes.instanceOf(File),
-  progress: PropTypes.shape({
-    now: PropTypes.number.isRequired,
-    max: PropTypes.number.isRequired,
-    text: PropTypes.string.isRequired,
-  }),
+  progress: CCCPropTypes.progressShape,
+};
+
+ImageUpload.defaultProps = {
+  progress: undefined,
 };

@@ -1,12 +1,17 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 
+import CCCPropTypes from '../prop-types';
+
 const COLONY_OUTLINE_RADIUS = 30;
 const SELECTED_COLONY_MARKER_RADIUS = 40;
 const SELECTED_COLONY_MARKER_COLOR = '#c82124';
 const SELECTED_COLONY_MARKER_STROKE_WIDTH = 5;
 const SCALE = 0.2;
 
+/* eslint no-param-reassign:
+  ["error", { "props": true, "ignorePropertyModificationsFor": ["context"] }]
+*/
 export function drawCircle(context, x, y, radius, lineWidth = 1, strokeStyle = 'black') {
   context.beginPath();
   context.strokeStyle = strokeStyle;
@@ -59,15 +64,21 @@ export default class Plate extends React.Component {
       <canvas
         width={this.props.image.width * SCALE}
         height={this.props.image.height * SCALE}
-        ref={canvas => this.canvas = canvas}
+        ref={(canvas) => {
+          this.canvas = canvas;
+        }}
       />
     );
   }
-
 }
 
 Plate.propTypes = {
   image: PropTypes.instanceOf(Image).isRequired,
-  grid: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number))),
-  selectedColony: PropTypes.shape({ row: PropTypes.number, col: PropTypes.number }),
+  grid: CCCPropTypes.gridShape,
+  selectedColony: CCCPropTypes.selectedColonyShape,
+};
+
+Plate.defaultProps = {
+  grid: undefined,
+  selectedColony: undefined,
 };

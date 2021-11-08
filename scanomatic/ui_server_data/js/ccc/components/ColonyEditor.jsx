@@ -3,6 +3,7 @@ import React from 'react';
 
 import ColonyFeatures from './ColonyFeatures';
 import ColonyImage from './ColonyImage';
+import CCCPropTypes from '../prop-types';
 
 export default class ColonyEditor extends React.Component {
   constructor(props) {
@@ -10,7 +11,7 @@ export default class ColonyEditor extends React.Component {
     this.state = {
       drawing: false,
       data: props.data,
-    }
+    };
     this.handleClickFix = this.handleClickFix.bind(this);
     this.handleInputChange = this.handleInputChange.bind(this);
     this.handleUpdate = this.handleUpdate.bind(this);
@@ -29,21 +30,20 @@ export default class ColonyEditor extends React.Component {
 
   handleUpdate(data) {
     this.setState({ drawing: false });
-    this.props.onUpdate && this.props.onUpdate(data);
+    const { onUpdate } = this.props;
+    if (onUpdate != null) onUpdate(data);
   }
 
   handleInputChange(event) {
     if (this.props.onCellCountChange) {
-      this.props.onCellCountChange(parseInt(event.target.value));
+      this.props.onCellCountChange(parseInt(event.target.value, 10));
     }
   }
 
 
   render() {
-    const cellCountValue =
-            this.props.cellCount == null ? '' : this.props.cellCount;
-    const cellCountFormGroupClass =
-            'form-group' + (this.props.cellCountError ? ' has-error' : '');
+    const cellCountValue = this.props.cellCount == null ? '' : this.props.cellCount;
+    const cellCountFormGroupClass = `form-group${this.props.cellCountError ? ' has-error' : ''}`;
     return (
       <div>
         <div><span>Colony Image</span></div>
@@ -93,12 +93,20 @@ export default class ColonyEditor extends React.Component {
 }
 
 ColonyEditor.propTypes = {
-  data: PropTypes.object.isRequired,
+  data: CCCPropTypes.colonyDataShape.isRequired,
   cellCount: PropTypes.number,
   cellCountError: PropTypes.bool,
   onCellCountChange: PropTypes.func,
-  onFix: PropTypes.func,
   onSet: PropTypes.func,
   onSkip: PropTypes.func,
   onUpdate: PropTypes.func,
+};
+
+ColonyEditor.defaultProps = {
+  cellCount: undefined,
+  cellCountError: undefined,
+  onCellCountChange: undefined,
+  onSet: undefined,
+  onSkip: undefined,
+  onUpdate: undefined,
 };

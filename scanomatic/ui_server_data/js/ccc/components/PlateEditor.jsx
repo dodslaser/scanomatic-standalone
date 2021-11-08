@@ -7,9 +7,7 @@ import PlateContainer from '../containers/PlateContainer';
 import Gridding from './Gridding';
 import CCCPropTypes from '../prop-types';
 
-
 const STEPS = ['pre-processing', 'gridding', 'colony-detection', 'done'];
-
 
 export function PlateStatusLabel({
   step, griddingError, now, max,
@@ -41,12 +39,18 @@ PlateStatusLabel.propTypes = {
   now: PropTypes.number,
   max: PropTypes.number,
   step: PropTypes.oneOf(STEPS).isRequired,
-}
+};
+
+PlateStatusLabel.defaultProps = {
+  griddingError: undefined,
+  now: undefined,
+  max: undefined,
+};
 
 export default function PlateEditor(props) {
   let title = 'Step 2: Gridding';
   if (props.step === 'colony-detection') {
-    title = 'Step 3: Colony Detection'
+    title = 'Step 3: Colony Detection';
   }
   const { nCols, nRows } = props.cccMetadata.pinningFormat;
   const now = (nCols * props.selectedColony.row) + props.selectedColony.col;
@@ -115,7 +119,8 @@ export default function PlateEditor(props) {
             </button>
             }
             {props.step === 'colony-detection' &&
-            <button className="btn btn-success"
+            <button
+              className="btn btn-success"
               onClick={props.onClickNext}
             >
               Done
@@ -142,19 +147,29 @@ PlateEditor.propTypes = {
   imageName: PropTypes.string.isRequired,
   plateId: PropTypes.number.isRequired,
   step: PropTypes.oneOf(STEPS).isRequired,
-  grid: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number))),
+  grid: CCCPropTypes.gridShape,
   griddingLoading: PropTypes.bool,
   griddingError: PropTypes.string,
   onClickNext: PropTypes.func,
   onColonyFinish: PropTypes.func,
-  selectedColony: PropTypes.shape({
-    row: PropTypes.number,
-    col: PropTypes.number,
-  }),
+  selectedColony: CCCPropTypes.selectedColonyShape,
   rowOffset: PropTypes.number.isRequired,
   colOffset: PropTypes.number.isRequired,
   onRowOffsetChange: PropTypes.func,
   onColOffsetChange: PropTypes.func,
   onRegrid: PropTypes.func,
   collapse: PropTypes.bool,
+};
+
+PlateEditor.defaultProps = {
+  grid: undefined,
+  griddingLoading: undefined,
+  griddingError: undefined,
+  onClickNext: undefined,
+  onColonyFinish: undefined,
+  selectedColony: undefined,
+  onRowOffsetChange: undefined,
+  onColOffsetChange: undefined,
+  onRegrid: undefined,
+  collapse: undefined,
 };

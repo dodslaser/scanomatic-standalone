@@ -4,6 +4,7 @@ import React from 'react';
 import { createCanvasImage, getMarkerData } from '../helpers';
 import CanvasState from '../CanvasState';
 import Blob from '../Blob';
+import CCCPropTypes from '../prop-types';
 
 export default class ColonyImage extends React.Component {
   constructor(props) {
@@ -28,7 +29,7 @@ export default class ColonyImage extends React.Component {
       this.colonyMarkingsCanvas.width = width;
       this.colonyMarkingsCanvas.height = height;
       this.metaDataCanvasState = new CanvasState(this.colonyMarkingsCanvas);
-      this.blob = new Blob(width / 2, height / 2, 15, "rgba(255, 0, 0, .2)");
+      this.blob = new Blob(width / 2, height / 2, 15, 'rgba(255, 0, 0, .2)');
       this.metaDataCanvasState.addShape(this.blob);
     }
   }
@@ -63,12 +64,16 @@ export default class ColonyImage extends React.Component {
       <div>
         <div style={style}>
           <canvas
-            ref={canvas => this.colonyImageCanvas = canvas}
+            ref={(canvas) => {
+              this.colonyImageCanvas = canvas;
+            }}
             style={{ zIndex: 1 }}
           />
           {this.props.draw &&
           <canvas
-            ref={canvas => this.colonyMarkingsCanvas = canvas}
+            ref={(canvas) => {
+              this.colonyMarkingsCanvas = canvas;
+            }}
             style={{
               position: 'absolute',
               zIndex: 2,
@@ -106,7 +111,14 @@ export default class ColonyImage extends React.Component {
     );
   }
 }
+
 ColonyImage.propTypes = {
-  data: PropTypes.object.isRequired,
+  data: CCCPropTypes.colonyDataShape.isRequired,
+  draw: PropTypes.bool,
   onUpdate: PropTypes.func,
+};
+
+ColonyImage.defaultProps = {
+  draw: undefined,
+  onUpdate: undefined,
 };

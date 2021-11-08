@@ -9,9 +9,6 @@ import FakePromise from '../helpers/FakePromise';
 
 
 describe('<ImageUploadContainer />', () => {
-  const fixture = 'MyFixture';
-  const cccId = 'CCC0';
-  const token = 'T0K3N';
   const imageId = 'IMG0';
   const onFinish = jasmine.createSpy('onFinish');
   const props = { cccMetadata, onFinish };
@@ -30,20 +27,6 @@ describe('<ImageUploadContainer />', () => {
   it('should render an <ImageUpload />', () => {
     const wrapper = mount(<ImageUploadContainer {...props} />);
     expect(wrapper.find('ImageUpload').exists()).toBeTruthy();
-  });
-
-  it('should initially pass no image', () => {
-    const wrapper = mount(<ImageUploadContainer {...props} />);
-    expect(wrapper.find('ImageUpload').prop('image')).toBe(null);
-  });
-
-  it('should update the image when <ImageUpload /> calls onImageChange', () => {
-    helpers.uploadImage.and.returnValue(new Promise(() => {}));
-    const image = new File(['foo'], 'myimage.tiff');
-    const wrapper = mount(<ImageUploadContainer {...props} />);
-    wrapper.find('ImageUpload').prop('onImageChange')(image);
-    wrapper.update();
-    expect(wrapper.find('ImageUpload').prop('image')).toEqual(image);
   });
 
   it('should upload the image when <ImageUpload /> calls onImageChange', () => {
@@ -74,13 +57,6 @@ describe('<ImageUploadContainer />', () => {
       uploadPromise.value = imageId;
     });
 
-    it('should clear the image', () => {
-      const wrapper = mount(<ImageUploadContainer {...props} />);
-      wrapper.find('ImageUpload').prop('onImageChange')(image);
-      wrapper.update();
-      expect(wrapper.children().prop('image')).toBe(null);
-    });
-
     it('should call onFinish with the image name and id', () => {
       const wrapper = mount(<ImageUploadContainer {...props} />);
       wrapper.find('ImageUpload').prop('onImageChange')(image);
@@ -108,13 +84,6 @@ describe('<ImageUploadContainer />', () => {
       wrapper.find('ImageUpload').prop('onImageChange')(image);
       expect(window.alert)
         .toHaveBeenCalledWith('An error occured while uploading the image: XxX');
-    });
-
-    it('should clear the image', () => {
-      const wrapper = mount(<ImageUploadContainer {...props} />);
-      wrapper.find('ImageUpload').prop('onImageChange')(image);
-      wrapper.update();
-      expect(wrapper.children().prop('image')).toBe(null);
     });
 
     it('should clear the progress', () => {

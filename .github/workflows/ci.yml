@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
     frontend-lint:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 
@@ -17,7 +17,7 @@ jobs:
             npm run lint
 
     frontend-test:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
         - uses: browser-actions/setup-chrome@latest
@@ -38,7 +38,7 @@ jobs:
             npm test
 
     frontend-build:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 
@@ -51,7 +51,7 @@ jobs:
             npm run build
 
     backend-lint:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 
@@ -62,7 +62,7 @@ jobs:
 
         - name: Install General Dependencies
           run: |
-            python2.7 -m pip install --upgrade pip
+            python3.9 -m pip install --upgrade pip
             pip install tox
 
         - name: Lint and Types
@@ -70,7 +70,7 @@ jobs:
             tox -e lint
 
     backend-mypy:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 
@@ -89,7 +89,7 @@ jobs:
             tox -e mypy
 
     backend-test:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 
@@ -103,12 +103,50 @@ jobs:
             python3.9 -m pip install --upgrade pip
             pip install tox
 
-        - name: Test non-system-tests
+        - name: Run unit tests
           run: |
-            tox -e py39
+            tox -e unit
+
+    backend-test-integration:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+
+        - name: Setup Python
+          uses: actions/setup-python@v2
+          with:
+            python-version: 3.9
+
+        - name: Install General Dependencies
+          run: |
+            python3.9 -m pip install --upgrade pip
+            pip install tox
+
+        - name: Run integration tests
+          run: |
+            tox -e integration
+
+    backend-test-system:
+        runs-on: ubuntu-20.04
+        steps:
+        - uses: actions/checkout@v2
+
+        - name: Setup Python
+          uses: actions/setup-python@v2
+          with:
+            python-version: 3.9
+
+        - name: Install General Dependencies
+          run: |
+            python3.9 -m pip install --upgrade pip
+            pip install tox
+
+        - name: Run system tests
+          run: |
+            tox -e system
 
     docker-build:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-20.04
         steps:
         - uses: actions/checkout@v2
 

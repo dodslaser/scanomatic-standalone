@@ -170,13 +170,10 @@ def validate_polynomial_format(polynomial):
             raise ValueError(
                 "Invalid polynomial representation: {}".format(polynomial)
             )
-    except (KeyError, TypeError) as err:
-        _logger.error(
-            "Validation of polynomial representation failed with {}".format(
-                err.message,
-            )
-        )
-        raise ValueError(err.message)
+    except (KeyError, TypeError):
+        message = "Validation of polynomial representation failed"
+        _logger.exception(message)
+        raise ValueError(message)
 
 
 def _get_new_image_identifier(ccc) -> str:

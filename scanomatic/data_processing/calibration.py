@@ -216,13 +216,10 @@ def has_valid_polynomial(ccc):
     poly = ccc[CellCountCalibration.polynomial]
     try:
         validate_polynomial_format(poly)
-    except ValueError as err:
-        _logger.error(
-            "Checking that CCC has valid polynomial failed with {}".format(
-                err.message
-            ),
-        )
-        raise ActivationError(err.message)
+    except ValueError:
+        message = "Checking that CCC has valid polynomial failed"
+        _logger.exception(message)
+        raise ActivationError(message)
 
 
 @_validate_ccc_edit_request

@@ -178,11 +178,10 @@ class _PipeEffector:
         ):
             try:
                 self._pipe.send((callName, args, kwargs))
-            except Exception as e:
-                self._logger.warning("Failed to send {0} ({1})".format(
-                    (callName, args, kwargs),
-                    (e, e.message),
-                ))
+            except Exception:
+                self._logger.exception(
+                    f"Failed to send {(callName, args, kwargs)}",
+                )
                 self._hasContact = False
                 return False
             return True

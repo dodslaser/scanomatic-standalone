@@ -2,7 +2,7 @@ import glob
 import os
 import re
 from logging import Logger
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
@@ -28,7 +28,9 @@ class ImageData(object):
         analysis_model: AnalysisModel,
         image_model: CompileImageAnalysisModel,
         features,
-    ):
+    ) -> bool:
+        if image_model.image is None:
+            raise ValueError("Need an image to write!")
         return ImageData._write_image(
             analysis_model.output_directory,
             image_model.image.index,
@@ -44,7 +46,7 @@ class ImageData(object):
         features,
         output_item: COMPARTMENTS,
         output_value: MEASURES,
-    ) -> Optional[bool]:
+    ) -> bool:
 
         path = os.path.join(*ImageData.directory_path_to_data_path_tuple(
             path,
@@ -53,7 +55,7 @@ class ImageData(object):
 
         if features is None:
             ImageData._LOGGER.warning(f"Image {image_index} had no data")
-            return
+            return False
 
         number_of_plates = features.shape[0]
         plates = [None] * number_of_plates
@@ -116,11 +118,14 @@ class ImageData(object):
 
     @staticmethod
     def write_times(
-        analysis_model,
+        analysis_model: AnalysisModel,
         image_model: CompileImageAnalysisModel,
         overwrite,
-    ):
+    ) -> None:
         global _SECONDS_PER_HOUR
+        image = image_model.image
+        if image is None:
+            raise ValueError("Need an image to write times!")
 
         if not overwrite:
             current_data = ImageData.read_times(
@@ -129,15 +134,13 @@ class ImageData(object):
         else:
             current_data = np.array([], dtype=float)
 
-        if not (image_model.image.index < current_data.size):
+        if not (image.index < current_data.size):
             current_data = np.r_[
                 current_data,
-                [None] * (1 + image_model.image.index - current_data.size)
+                [None] * (1 + image.index - current_data.size)
             ].astype(float)
 
-        current_data[image_model.image.index] = (
-            image_model.image.time_stamp / _SECONDS_PER_HOUR
-        )
+        current_data[image.index] = image.time_stamp / _SECONDS_PER_HOUR
         np.save(
             os.path.join(*ImageData.directory_path_to_data_path_tuple(
                 analysis_model.output_directory,
@@ -147,7 +150,7 @@ class ImageData(object):
         )
 
     @staticmethod
-    def read_times(path):
+    def read_times(path: str):
         path = os.path.join(*ImageData.directory_path_to_data_path_tuple(
             path,
             times=True,
@@ -162,7 +165,7 @@ class ImageData(object):
             return np.array([], dtype=float)
 
     @staticmethod
-    def read_image(path):
+    def read_image(path: str):
         if os.path.isfile(path):
             return unpickle_with_unpickler(np.load, path)
         else:
@@ -171,7 +174,7 @@ class ImageData(object):
     @staticmethod
     def directory_path_to_data_path_tuple(
         directory_path: str,
-        image_index="*",
+        image_index: Union[int, str] = "*",
         times: bool = False,
     ) -> Tuple[str, str]:
         if (

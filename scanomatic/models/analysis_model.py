@@ -119,6 +119,9 @@ class GridModel(model.Model):
         self.reference_grid_folder = reference_grid_folder
         super(GridModel, self).__init__()
 
+    def __hash__(self):
+        return id(self)
+
 
 class AnalysisMetaData(model.Model):
     def __init__(
@@ -157,3 +160,6 @@ class AnalysisFeatures(model.Model):
         self.shape = shape
         self.index: int = index
         super(AnalysisFeatures, self).__init__()
+
+    def __hash__(self):
+        return id(self)

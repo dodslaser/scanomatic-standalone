@@ -3,7 +3,7 @@ from enum import Enum
 from glob import glob
 from logging import Logger
 from typing import Optional
-from collections import Sequence
+from collections.abc import Sequence
 
 from scanomatic.io.paths import Paths
 from scanomatic.models.compile_project_model import (
@@ -20,7 +20,7 @@ from scanomatic.models.scanning_model import ScanningModel
 FIRST_PASS_SORTING = Enum("FIRST_PASS_SORTING", names=("Index", "Time"))
 
 
-class CompilationResults(object):
+class CompilationResults:
     def __init__(
         self,
         compilation_path=None,

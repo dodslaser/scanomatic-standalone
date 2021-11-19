@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 import pickle
 import types
@@ -1018,7 +1019,6 @@ class Serializer:
 
                 else:
                     value = SerializationHelper.unserialize(value, dtype)
-
                 model[key] = value
 
         return factory.create(**model)
@@ -1030,7 +1030,7 @@ class Serializer:
         if not self._has_section_head(model):
             raise ValueError("Need a section head for serialization")
 
-        with LinkerConfigParser(id=id(model)) as conf:
+        with LinkerConfigParser(id=id(model), allow_no_value=True) as conf:
             conf = self.serialize_into_conf(
                 model,
                 conf,
@@ -1042,12 +1042,6 @@ class Serializer:
             )
 
     def serialize_into_conf(self, model, conf, section):
-        # self._logger.info("Serializing {0} into '{1}' of {2}".format(
-        #     model,
-        #     section,
-        #     conf,
-        # ))
-
         if conf.has_section(section):
             conf.remove_section(section)
 
@@ -1181,26 +1175,26 @@ class SerializationHelper:
             )
 
     @staticmethod
-    def serialize(obj, dtype):
+    def serialize(obj, dtype) -> Optional[str]:
         if obj is None:
             return None
 
-        elif isinstance(dtype, type) and issubclass(dtype, Enum):
+        elif isinstance(obj, Enum):
             return obj.name
 
         elif dtype is _SectionsLink:
-            return pickle.dumps(obj)
+            return pickle.dumps(obj).decode('iso-8859-1')
 
         elif dtype in (int, float, str, bool):
             return str(obj)
 
         elif isinstance(dtype, types.FunctionType):
-            return pickle.dumps(dtype(serialize=obj))
+            return pickle.dumps(dtype(serialize=obj)).decode('iso-8859-1')
 
         else:
             if not isinstance(obj, dtype):
                 obj = dtype(obj)
-            return pickle.dumps(obj)
+            return pickle.dumps(obj).decode('iso-8859-1')
 
     @staticmethod
     def isvalidtype(o, dtype) -> bool:
@@ -1263,12 +1257,18 @@ class SerializationHelper:
             try:
                 return dtype[serialized_obj]
             except (KeyError, SyntaxError):
+                logging.exception(
+                    f"Could not parse {serialized_obj} with type {dtype}",
+                )
                 return None
 
         elif dtype is bool:
             try:
                 return bool(eval(serialized_obj))
             except (NameError, AttributeError, SyntaxError):
+                logging.exception(
+                    f"Could not parse {serialized_obj} with type {dtype}",
+                )
                 return False
 
         elif dtype in (int, float, str):
@@ -1284,12 +1284,20 @@ class SerializationHelper:
                     TypeError,
                     ValueError,
                 ):
+                    logging.exception(
+                        f"Could not parse {serialized_obj} with type {dtype}",
+                    )
                     return None
 
         elif isinstance(dtype, types.FunctionType):
             try:
-                return dtype(enforce=pickle.loads(serialized_obj.encode()))
+                return dtype(enforce=pickle.loads(
+                    serialized_obj.encode('iso-8859-1'),
+                ))
             except (pickle.PickleError, EOFError):
+                logging.exception(
+                    f"Could not parse {serialized_obj} with type {dtype}",
+                )
                 return None
 
         elif isinstance(serialized_obj, types.GeneratorType):
@@ -1306,8 +1314,11 @@ class SerializationHelper:
 
         else:
             try:
-                return pickle.loads(serialized_obj)
-            except (pickle.PickleError, TypeError):
+                return pickle.loads(serialized_obj.encode('iso-8859-1'))
+            except (pickle.PickleError, TypeError, EOFError):
+                logging.exception(
+                    f"Could not parse {serialized_obj} with type {dtype}",
+                )
                 return None
 
     @staticmethod

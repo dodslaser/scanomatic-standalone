@@ -2,9 +2,8 @@ import os
 import uuid
 from configparser import ConfigParser, NoOptionError, NoSectionError
 from logging import Logger
-from typing import Optional, Union, cast
+from typing import Optional, Union
 from collections.abc import Sequence
-from scanomatic.generics.abstract_model_factory import Serializer
 
 import scanomatic.models.scanning_model as scanning_model
 from scanomatic.generics.singleton import SingeltonOneInit
@@ -165,12 +164,8 @@ class Config(SingeltonOneInit):
     def reload_settings(self) -> None:
         if os.path.isfile(self._paths.config_main_app):
             try:
-                serializer = cast(
-                    Serializer,
-                    ApplicationSettingsFactory.serializer,
-                )
                 self._settings = (
-                    serializer.load_first(
+                    ApplicationSettingsFactory.get_serializer().load_first(
                         self._paths.config_main_app,
                     )
                 )
@@ -276,14 +271,10 @@ class Config(SingeltonOneInit):
 
     def save_current_settings(self) -> None:
         if self.validate():
-            serializer = cast(
-                Serializer,
-                ApplicationSettingsFactory.serializer,
-            )
-            serializer.purge_all(
+            ApplicationSettingsFactory.get_serializer().purge_all(
                 self._paths.config_main_app,
             )
-            serializer.dump(
+            ApplicationSettingsFactory.get_serializer().dump(
                 self._settings,
                 self._paths.config_main_app,
             )

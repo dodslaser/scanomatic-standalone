@@ -5,12 +5,13 @@ import pickle
 import types
 import warnings
 from collections import defaultdict
+from collections.abc import Callable
 from configparser import ConfigParser, NoSectionError
 from enum import Enum
 from logging import Logger
 from numbers import Real
 from types import GeneratorType
-from typing import Any, Generator, Optional, Union
+from typing import Any, Generator, Optional, Sequence, Type, Union, cast
 
 import scanomatic.generics.decorators as decorators
 from scanomatic.generics.model import Model
@@ -100,7 +101,7 @@ def _get_coordinates_and_items_to_validate(structure, obj):
         pass
 
 
-def _update_object_at(obj, coordinate, value):
+def _update_object_at(obj, coordinate, value) -> None:
 
     if obj is None or obj is False:
         warnings.warn(
@@ -145,7 +146,7 @@ class AbstractModelFactory:
     MODEL = Model
 
     _LOGGER = None
-    _SUB_FACTORIES: dict[Model, "AbstractModelFactory"] = {}
+    _SUB_FACTORIES: dict[Type[Model], Type["AbstractModelFactory"]] = {}
     STORE_SECTION_HEAD: Union[str, tuple[str]] = ""
     STORE_SECTION_SERIALIZERS: dict[str, Any] = {}
 
@@ -153,46 +154,42 @@ class AbstractModelFactory:
         raise Exception("This class is static, can't be instantiated")
 
     @classmethod
-    @property
-    def logger(cls) -> Logger:
+    def get_logger(cls) -> Logger:
         if cls._LOGGER is None:
             cls._LOGGER = Logger(cls.__name__)
 
         return cls._LOGGER
 
     @classmethod
-    @property
-    def serializer(cls) -> "Serializer":
+    def get_serializer(cls) -> "Serializer":
         return Serializer(cls)
 
     @classmethod
-    @property
-    def default_model(cls) -> Model:
+    def get_default_model(cls) -> Model:
         return cls.MODEL()
 
     @classmethod
-    def get_sub_factory(cls, model: Model):
+    def get_sub_factory(cls, model: Model) -> Type["AbstractModelFactory"]:
         model_type = type(model)
         if model_type not in cls._SUB_FACTORIES:
-            cls.logger.warning(
-                "Unknown subfactory for model-type {0}".format(model_type)
+            cls.get_logger().warning(
+                f"Unknown subfactory for model-type {model_type}",
             )
             return AbstractModelFactory
         return cls._SUB_FACTORIES[model_type]
 
     @classmethod
-    def _verify_correct_model(cls, model):
+    def _verify_correct_model(cls, model) -> bool:
         if not isinstance(model, cls.MODEL):
-            raise TypeError("Wrong model for factory {1} is not a {0}".format(
-                cls.MODEL,
-                model,
-            ))
+            raise TypeError(
+                f"Wrong model for factory {cls.MODEL} is not a {model}",
+            )
 
         return True
 
     @classmethod
     def create(cls, **settings) -> Model:
-        valid_keys = tuple(cls.default_model.keys())
+        valid_keys = tuple(cls.get_default_model().keys())
 
         cls.drop_keys(settings, valid_keys)
         cls.enforce_serializer_type(
@@ -202,19 +199,19 @@ class AbstractModelFactory:
         return cls.MODEL(**settings)
 
     @classmethod
-    def all_keys_valid(cls, keys):
-        expected = set(cls.default_model.keys())
+    def all_keys_valid(cls, keys) -> bool:
+        expected = set(cls.get_default_model().keys())
         return (
             expected.issuperset(keys)
             and len(expected.intersection(keys)) > 0
         )
 
     @classmethod
-    def drop_keys(cls, settings, valid_keys):
+    def drop_keys(cls, settings, valid_keys) -> None:
         keys = tuple(settings.keys())
         for key in keys:
             if key not in valid_keys:
-                cls.logger.warning(
+                cls.get_logger().warning(
                     "Removing key \"{0}\" from {1} creation, since not among {2}".format(  # noqa: E501
                        key,
                        cls.MODEL,
@@ -242,9 +239,9 @@ class AbstractModelFactory:
                     try:
                         return factory.create(**obj)
                     except TypeError as e:
-                        cls.logger.warning("Could not use {0} on key {1} to create sub-class".format(  # noqa: E501
-                            factory, obj
-                        ))
+                        cls.get_logger().warning(
+                            f"Could not use {factory} on key {obj} to create sub-class",  # noqa: E501
+                        )
                         raise e
 
                 if index < len(factories):
@@ -266,20 +263,17 @@ class AbstractModelFactory:
                     try:
                         return dtype.create(**obj)
                     except AttributeError:
-                        cls.logger.error(
-                            "Contents mismatch between factory {0} and model data '{1}'".format(  # noqa: E501
-                                dtype,
-                                obj,
-                            ),
+                        cls.get_logger().error(
+                            f"Contents mismatch between factory {dtype} and model data '{obj}'",  # noqa: E501
                         )
                         return obj
             try:
-                return dtype(obj)
+                return cast(Callable, dtype)(obj)
             except (AttributeError, ValueError, TypeError):
                 try:
-                    return dtype[obj]
+                    return cast(Sequence, dtype)[obj]
                 except (AttributeError, KeyError, IndexError, TypeError):
-                    cls.logger.error(
+                    cls.get_logger().error(
                         "Having problems enforcing '{0}' to be type '{1}' in supplied settings '{2}'.".format(  # noqa: E501
                             obj,
                             dtype,
@@ -363,7 +357,7 @@ class AbstractModelFactory:
                     settings[key] = _enforce_other(dtype, settings[key])
 
     @classmethod
-    def update(cls, model, **settings):
+    def update(cls, model, **settings) -> None:
         for parameter, value in list(settings.items()):
             if parameter in model:
                 setattr(model, parameter, value)
@@ -371,8 +365,9 @@ class AbstractModelFactory:
     @classmethod
     def copy(cls, model):
         if cls._verify_correct_model(model):
-            return cls.serializer.load_serialized_object(
-                copy.deepcopy(cls.serializer.serialize(model))
+            serializer = cls.get_serializer()
+            return serializer.load_serialized_object(
+                copy.deepcopy(serializer.serialize(model))
             )[0]
 
     @classmethod
@@ -384,7 +379,7 @@ class AbstractModelFactory:
             return type(models)(gen)
 
     @classmethod
-    def to_dict(cls, model):
+    def to_dict(cls, model) -> dict:
         model_as_dict = dict(**model)
         for k in model_as_dict.keys():
             if k not in cls.STORE_SECTION_SERIALIZERS:
@@ -433,7 +428,7 @@ class AbstractModelFactory:
         return model_as_dict
 
     @classmethod
-    def validate(cls, model):
+    def validate(cls, model) -> bool:
         if cls._verify_correct_model(model):
             return all(v is True for v in cls._get_validation_results(model))
 
@@ -465,12 +460,12 @@ class AbstractModelFactory:
         )
 
     @classmethod
-    def set_invalid_to_default(cls, model):
+    def set_invalid_to_default(cls, model) -> None:
         if cls._verify_correct_model(model):
             cls.set_default(model, fields=tuple(cls.get_invalid(model)))
 
     @classmethod
-    def set_default(cls, model, fields=None):
+    def set_default(cls, model, fields=None) -> None:
         if cls._verify_correct_model(model):
             default_model = cls.MODEL()
 
@@ -482,7 +477,7 @@ class AbstractModelFactory:
                     setattr(model, attr, val)
 
     @classmethod
-    def populate_with_default_submodels(cls, obj: Union[dict, Model]):
+    def populate_with_default_submodels(cls, obj: Union[dict, Model]) -> None:
         """Keys missing models/having None will get default instances of that
         field if possible."""
 
@@ -493,14 +488,14 @@ class AbstractModelFactory:
             ):
                 obj[key] = cls._SUB_FACTORIES[
                     cls.STORE_SECTION_SERIALIZERS[key]
-                ].default_model
+                ].get_default_model()
 
     @classmethod
-    def clamp(cls, model):
+    def clamp(cls, model) -> None:
         pass
 
     @classmethod
-    def _clamp(cls, model, min_model, max_model):
+    def _clamp(cls, model, min_model, max_model) -> None:
         if (
             cls._verify_correct_model(model)
             and cls._verify_correct_model(min_model)
@@ -539,7 +534,7 @@ class AbstractModelFactory:
             return True
 
     @classmethod
-    def _is_valid_submodel(cls, model, key):
+    def _is_valid_submodel(cls, model, key) -> bool:
         sub_model = getattr(model, key)
         sub_model_type = type(sub_model)
         if (
@@ -550,7 +545,7 @@ class AbstractModelFactory:
         return False
 
     @staticmethod
-    def _in_bounds(model, lower_bounds, upper_bounds, attr):
+    def _in_bounds(model, lower_bounds, upper_bounds, attr) -> bool:
         val = getattr(model, attr)
         min_val = getattr(lower_bounds, attr)
         max_val = getattr(upper_bounds, attr)
@@ -563,7 +558,7 @@ class AbstractModelFactory:
             return True
 
     @staticmethod
-    def _is_pinning_formats(pinning_formats):
+    def _is_pinning_formats(pinning_formats) -> bool:
         try:
             return all(
                 pinning_format is None
@@ -576,15 +571,15 @@ class AbstractModelFactory:
         return False
 
     @staticmethod
-    def _is_file(path):
+    def _is_file(path) -> bool:
         return isinstance(path, str) and os.path.isfile(path)
 
     @staticmethod
-    def _is_tuple_or_list(obj):
+    def _is_tuple_or_list(obj) -> bool:
         return isinstance(obj, tuple) or isinstance(obj, list)
 
     @staticmethod
-    def _is_enum_value(obj, enum):
+    def _is_enum_value(obj, enum) -> bool:
         if obj in enum:
             return True
 
@@ -603,11 +598,11 @@ class AbstractModelFactory:
             return True
 
     @staticmethod
-    def _is_real_number(obj):
+    def _is_real_number(obj) -> bool:
         return isinstance(obj, Real)
 
 
-def _is_pinning_format(pinning_format):
+def _is_pinning_format(pinning_format) -> bool:
     try:
         return all(
             isinstance(val, int)
@@ -621,17 +616,19 @@ def _is_pinning_format(pinning_format):
 
 
 class _SectionsLink:
-    _CONFIGS = defaultdict(set)
-    _LINKS = {}
+    _CONFIGS: defaultdict[Any, set] = defaultdict(set)
+    _LINKS: dict[Model, "_SectionsLink"] = {}
 
     def __init__(self, subfactory: AbstractModelFactory, submodel: Model):
         self._subfactory = subfactory
-        self._section_name = subfactory.serializer.get_section_name(submodel)
+        self._section_name = subfactory.get_serializer().get_section_name(
+            submodel,
+        )
         self._locked_name = False
         _SectionsLink._LINKS[submodel] = self
 
     @staticmethod
-    def get_link(model) -> "_SectionsLink":
+    def get_link(model: Model) -> "_SectionsLink":
         return _SectionsLink._LINKS[model]
 
     @staticmethod
@@ -730,7 +727,7 @@ class _SectionsLink:
         return config_parser.items(self._section_name)
 
     def retrieve_model(self, config_parser):
-        return self._subfactory.serializer.unserialize_section(
+        return self._subfactory.get_serializer().unserialize_section(
             config_parser,
             self._section_name,
         )
@@ -798,7 +795,7 @@ class MockConfigParser:
 
 @decorators.memoize
 class Serializer:
-    def __init__(self, factory: AbstractModelFactory):
+    def __init__(self, factory: Type[AbstractModelFactory]):
         self._factory = factory
         self._logger = Logger(factory.__name__)
 
@@ -1071,7 +1068,7 @@ class Serializer:
                 ):
                     subfactory = factory.get_sub_factory(item)
                     link = _SectionsLink.set_link(subfactory, item, conf)
-                    subfactory.serializer.serialize_into_conf(
+                    subfactory.get_serializer().serialize_into_conf(
                         item,
                         conf,
                         link.section,
@@ -1109,7 +1106,7 @@ class Serializer:
                     _SectionsLink,
                 ),
             )
-            subfactory.serializer.serialize_into_conf(
+            subfactory.get_serializer().serialize_into_conf(
                 obj,
                 conf,
                 _SectionsLink.get_link(obj).section,
@@ -1221,7 +1218,7 @@ class SerializationHelper:
             else:
                 return SerializationHelper.unserialize(obj, structure[0])
         else:
-            outer_obj = -1
+            outer_obj: Any = -1
             while (
                 outer_obj is not None
                 and not SerializationHelper.isvalidtype(
@@ -1255,7 +1252,7 @@ class SerializationHelper:
 
         elif isinstance(dtype, type) and issubclass(dtype, Enum):
             try:
-                return dtype[serialized_obj]
+                return dtype[cast(str, serialized_obj)]
             except (KeyError, SyntaxError):
                 logging.exception(
                     f"Could not parse {serialized_obj} with type {dtype}",
@@ -1264,7 +1261,7 @@ class SerializationHelper:
 
         elif dtype is bool:
             try:
-                return bool(eval(serialized_obj))
+                return bool(eval(cast(str, serialized_obj)))
             except (NameError, AttributeError, SyntaxError):
                 logging.exception(
                     f"Could not parse {serialized_obj} with type {dtype}",
@@ -1273,10 +1270,12 @@ class SerializationHelper:
 
         elif dtype in (int, float, str):
             try:
-                return dtype(serialized_obj)
+                return cast(Callable, dtype)(serialized_obj)
             except (TypeError, ValueError):
                 try:
-                    return dtype(eval(serialized_obj))
+                    return cast(Callable, dtype)(
+                        eval(cast(str, serialized_obj)),
+                    )
                 except (
                     SyntaxError,
                     NameError,
@@ -1292,7 +1291,7 @@ class SerializationHelper:
         elif isinstance(dtype, types.FunctionType):
             try:
                 return dtype(enforce=pickle.loads(
-                    serialized_obj.encode('iso-8859-1'),
+                    cast(str, serialized_obj).encode('iso-8859-1'),
                 ))
             except (pickle.PickleError, EOFError):
                 logging.exception(
@@ -1301,7 +1300,7 @@ class SerializationHelper:
                 return None
 
         elif isinstance(serialized_obj, types.GeneratorType):
-            return dtype(serialized_obj)
+            return cast(Callable, dtype)(serialized_obj)
 
         elif (
             isinstance(serialized_obj, _SectionsLink)
@@ -1314,7 +1313,9 @@ class SerializationHelper:
 
         else:
             try:
-                return pickle.loads(serialized_obj.encode('iso-8859-1'))
+                return pickle.loads(
+                    cast(str, serialized_obj).encode('iso-8859-1'),
+                )
             except (pickle.PickleError, TypeError, EOFError):
                 logging.exception(
                     f"Could not parse {serialized_obj} with type {dtype}",

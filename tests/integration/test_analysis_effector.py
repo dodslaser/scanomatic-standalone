@@ -5,6 +5,7 @@ import pytest
 
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
 from scanomatic.models.factories.rpc_job_factory import RPC_Job_Model_Factory
+from scanomatic.models.validators.validate import validate
 from scanomatic.server.analysis_effector import AnalysisEffector
 
 
@@ -33,9 +34,9 @@ def proj1_analysis(proj1, tmpdir):
         compilation=str(workdir.join('proj1.project.compilation')),
         chain=False,
     )
-    assert AnalysisModelFactory.validate(analysis_model)
+    assert validate(analysis_model)
     job = RPC_Job_Model_Factory.create(id='135', content_model=analysis_model)
-    assert RPC_Job_Model_Factory.validate(job)
+    assert validate(job)
     return ProjInfo(job, workdir)
 
 

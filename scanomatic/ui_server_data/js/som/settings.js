@@ -1,12 +1,15 @@
-let pmType;
+import $ from 'jquery';
+import { getSharedValue, setSharedValue } from '.';
+import { API, Dialogue, InputEnabled } from './helpers';
 
-function toggleVisibilities(button, state) {
+
+export function toggleVisibilities(button, state) {
   $(button).parent().nextAll().css('display', state ? '' : 'none');
   $('#scanner_section').css('display', $(button).val() !== 'notInstalled' ? '' : 'none');
-  pmType = $(button).val();
+  setSharedValue('pmType', $(button).val());
 }
 
-function dynamicallyLimitScanners(button) {
+export function dynamicallyLimitScanners(button) {
   const numOfScanners = $('#number_of_scanners');
   const maxVal = $(button).val();
   numOfScanners.attr('max', maxVal);
@@ -15,14 +18,14 @@ function dynamicallyLimitScanners(button) {
   }
 }
 
-function UpdateSettings(button) {
+export function UpdateSettings(button) {
   InputEnabled($(button), false);
 
   const data = {
     number_of_scanners: $('#number_of_scanners').val(),
     power_manager: {
       sockets: $('#number_of_sockets').val(),
-      type: pmType,
+      type: getSharedValue('pmType'),
       host: $('#power_manager_host').val(),
       mac: $('#power_manager_mac').val(),
       name: $('#power_manager_name').val(),

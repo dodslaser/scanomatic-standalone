@@ -1,30 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <title>Scan-o-Matic</title>
+  <script src="/js/somlib/som.js"></script>
+  <script>
+    som.setSharedValue("currentFixtureId", "#current-fixture");
+    som.setSharedValue("newFixtureDataId", "#new-fixture-data");
+    som.setSharedValue("newFixtureDetectId", "#new-fixture-detect");
+    som.setSharedValue("newFixtureImageId", "#new-fixture-image");
+    som.setSharedValue("newFixtureMarkersId", "#new-fixture-markers");
+    som.setSharedValue("newFixtureName", "#new-fixture-name");
+    som.setSharedValue("selectedFixtureDivId", "#selected-fixture");
+    som.setSharedValue("selectedFixtureCanvasId", "#selected-fixture-canvas");
+    som.setSharedValue("fixtureNameId", "#selected-fixture-name");
+    som.setSharedValue("saveFixtureActionId", "#update-type");
+    som.setSharedValue("saveFixtureButton", "#submit-button");
+    som.setSharedValue("removeFixtureId", "#remove-button");
+    som.setSharedValue("grayscaleTypeId", "#grayscale");
+  </script>
   <link rel="stylesheet" type="text/css" href="/style/main.css?ver=_-_VERSIONTAG_-_">
   <link rel="stylesheet" type="text/css" href="/style/fixtures.css?ver=_-_VERSIONTAG_-_">
-  <title>Scan-o-Matic</title>
-  <script src="/js/external/jquery.js"></script>
-  <script src="/js/external/jquery-ui.js"></script>
-  <script src="/js/helpers.js?ver=_-_VERSIONTAG_-_"></script>
-  <script src="/js/simple_graphs.js?ver=_-_VERSIONTAG_-_"></script>
-  <script src="/js/grayscales.js?ver=_-_VERSIONTAG_-_"></script>
-  <script src="/js/fixtures.js?ver=_-_VERSIONTAG_-_"></script>
-  <script>
-    current_fixture_id = "#current-fixture";
-    new_fixture_data_id = "#new-fixture-data";
-    new_fixture_detect_id = "#new-fixture-detect";
-    new_fixture_image_id = "#new-fixture-image";
-    new_fixture_markers_id = "#new-fixture-markers";
-    new_fixture_name = "#new-fixture-name";
-    selected_fixture_div_id = "#selected-fixture";
-    selected_fixture_canvas_id = '#selected-fixture-canvas';
-    fixture_name_id = "#selected-fixture-name";
-    save_fixture_action_id = "#update-type";
-    save_fixture_button = "#submit-button";
-    remove_fixture_id = "#remove-button";
-    grayscale_type_id = "#grayscale";
-  </script>
 </head>
 <body>
 <div id="cont">
@@ -36,9 +31,9 @@
         Select:
       </label>
       <select name="current-fixtures" id="current-fixture"
-        onchange="get_fixture();"></select>
+        onchange="som.getFixture();"></select>
       <input name="add-fixture" id="add-fixture"
-        onclick="add_fixture()"  type="button" value="Add new..."/>
+        onclick="som.addFixture()"  type="button" value="Add new..."/>
     </div>
 
     <div id="new-fixture-data" class="section">
@@ -49,15 +44,15 @@
             Name:
           </label>
           <input name="new-fixture-name" id="new-fixture-name"
-            onchange="SetAllowDetect();"
-            onkeyup="SetAllowDetect();"/>
+            onchange="som.SetAllowDetect();"
+            onkeyup="som.SetAllowDetect();"/>
         </li>
         <li>
           <label for="new-fixture-image">
             Reference Image:
           </label>
           <input name="new-fixture-image" id="new-fixture-image" type="file" accept="image/tiff"
-               onchange="SetAllowDetect();"/>
+               onchange="som.SetAllowDetect();"/>
         </li>
         <li>
           <label for="new-fixture-markers">
@@ -65,7 +60,7 @@
           </label>
           <input type="number" value="3" name="new-fixture-markers" id="new-fixture-markers" min="3" max="7"/>
           <button type="button" id="new-fixture-detect"
-              onclick="detect_markers()">
+              onclick="som.detectMarkers()">
             Detect
           </button>
         </li>
@@ -84,7 +79,7 @@
       <input type="hidden" name="update-type" id='update-type' value="update"/>
       <div>
         <button type="button" id="clear-areas"
-            onclick="clearAreas();draw_fixture();selected_fixture_canvas_jq.focus();">
+            onclick="som.clearAreas();som.drawFixture();som.getSharedValue('selectedFixtureCanvasJq').focus();">
           Clear All Areas
         </button>
         <label for="grayscale">
@@ -92,20 +87,20 @@
         </label>
         <select name="grayscale" id="grayscale" class="grayscale-selector"></select>
         <button type="button" id="submit-button"
-            onclick="SaveFixture();">
+            onclick="som.SaveFixture();">
           Save
         </button>
         <button type="button" id="remove-button"
-            onclick="RemoveFixture();">
+            onclick="som.RemoveFixture();">
           Remove
         </button>
       </div>
     </div>
 
     <script>
-      LoadGrayscales();
-      get_fixtures();
-      set_canvas();
+      som.LoadGrayscales();
+      som.getFixtures();
+      som.setCanvas();
     </script>
 
   </form>

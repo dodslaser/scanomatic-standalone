@@ -3,40 +3,19 @@
   <head>
     <title>Quality Control Prototype</title>
     <meta charset="utf-8" />
-    <script src="js/external/jquery.js"></script>
-    <script src="js/external/bootstrap.js"></script>
-    <script src="js/external/d3.js"></script>
-    <script src="js/external/jquery.treetable.js"></script>
-    <script src="js/external/jquery.modal.js"></script>
-    <script src="js/external/jquery-ui.js"></script>
-    <script src="js/external/bootstrap-toggle.js"></script>
-    <script src="js/external/spin.js"></script>
-
-    <script src="js/qc_normHelper.js?ver=1.0.0"></script>
-    <script src="js/qc_normDrawPlate.js?ver=1.0.0"></script>
-    <script src="js/qc_normDrawCurves.js?ver=1.0.0"></script>
-    <script src="js/qc_normAPIHelper.js?ver=1.0.0"></script>
-
+    <script src="js/somlib/som.js"></script>
     <link href="style/qc_norm.css" rel="stylesheet"/>
-    <link href="style/bootstrap.css" rel="stylesheet"/>
     <link href="style/main.css" rel="stylesheet"/>
-    <link href="style/jquery.treetable.css" rel="stylesheet" />
-    <link href="style/jquery.treetable.theme.default.css" rel="stylesheet" />
-    <link href="style/bootstrap-toggle.min.css" rel="stylesheet" />
-    <link href="style/jquery.modal.css" rel="stylesheet" />
-    <link href="style/jquery-ui.css" rel="stylesheet" />
-
-
   </head>
 <body>
   <script>
     $(window)
-      .unload(function () {
+      .on("unload", function () {
         var lock_key = $("#spLock").data("lock_key");
         var unlockPath = $("#spLock").data("unLock_path");
         if (unlockPath) {
           $("#divLockRemoving").show();
-          RemoveLock(unlockPath,
+          som.RemoveLock(unlockPath,
             lock_key,
             function (success) {
               $("#spLock").text("Read/Write");
@@ -71,7 +50,7 @@
 
         createMarkButtons();
         var target = document.getElementById("divLoading");
-        var spinner = new Spinner(opts).spin(target);
+        var spinner = new som.Spinner(opts).spin(target);
         var dispatch = d3.dispatch("setExp", "reDrawExp");
         spinner.stop();
 
@@ -100,7 +79,7 @@
             var project = $("#spProject").text();
             var lockKey = getLock_key();
             wait();
-            GetNormalizeProject(project, lockKey, function (data) {
+            som.GetNormalizeProject(project, lockKey, function (data) {
               if (data.success === true)
                 alert("Succeded!");
               else
@@ -120,7 +99,7 @@
           var project = $("#spProject").text();
           var url = "/api/results/export/phenotypes/NormalizedRelative/" + project;
           wait();
-          GetExport(url, function () {
+          som.GetExport(url, function () {
             stopWait();
           });
         });
@@ -128,7 +107,7 @@
           var project = $("#spProject").text();
           var url = "/api/results/export/phenotypes/NormalizedAbsoluteBatched/" + project;
           wait();
-          GetExport(url, function () {
+          som.GetExport(url, function () {
             stopWait();
           });
         });
@@ -136,16 +115,16 @@
           getLock(function () { });
         });
         $("#btnMarkOK").click(function () {
-          markExperiemnt(plateMetaDataType.OK, false);
+          markExperiemnt(som.plateMetaDataType.OK, false);
         });
         $("#btnMarkBad").click(function () {
-          markExperiemnt(plateMetaDataType.BadData, false);
+          markExperiemnt(som.plateMetaDataType.BadData, false);
         });
         $("#btnMarkEmpty").click(function () {
-          markExperiemnt(plateMetaDataType.Empty, true);
+          markExperiemnt(som.plateMetaDataType.Empty, true);
         });
         $("#btnMarkNoGrowth").click(function () {
-          markExperiemnt(plateMetaDataType.NoGrowth, true);
+          markExperiemnt(som.plateMetaDataType.NoGrowth, true);
         });
         $("#btnQidxNext").click(function () {
           setExperimentByQidx(qIdxOperations.Prev);
@@ -157,16 +136,16 @@
           var char = getChar(event).toLowerCase();
           switch (char) {
             case 'q':
-              markExperiemnt(plateMetaDataType.OK, false);
+              markExperiemnt(som.plateMetaDataType.OK, false);
               break;
             case 'w':
-              markExperiemnt(plateMetaDataType.BadData, false);
+              markExperiemnt(som.plateMetaDataType.BadData, false);
               break;
             case 'e':
-              markExperiemnt(plateMetaDataType.Empty, true);
+              markExperiemnt(som.plateMetaDataType.Empty, true);
               break;
             case 'r':
-              markExperiemnt(plateMetaDataType.NoGrowth, true);
+              markExperiemnt(som.plateMetaDataType.NoGrowth, true);
               break;
             case '1':
               $("#btnPlate0").focus();
@@ -269,10 +248,10 @@
               "width": 25,
               "height": 25
             });
-          addSymbolToSGV(btn, type);
+          som.addSymbolToSVG(btn, type);
           btn.append("use")
             .attr({
-              "xlink:href": "#" + getValidSymbol(type),
+              "xlink:href": "#" + som.getValidSymbol(type),
               "x": 0,
               "y": 0,
               "width": 25,
@@ -281,10 +260,10 @@
         };
 
         function createMarkButtons() {
-          createMarkButton("#btnMarkOK", plateMetaDataType.OK);
-          createMarkButton("#btnMarkBad", plateMetaDataType.BadData);
-          createMarkButton("#btnMarkEmpty", plateMetaDataType.Empty);
-          createMarkButton("#btnMarkNoGrowth", plateMetaDataType.NoGrowth);
+          createMarkButton("#btnMarkOK", som.plateMetaDataType.OK);
+          createMarkButton("#btnMarkBad", som.plateMetaDataType.BadData);
+          createMarkButton("#btnMarkEmpty", som.plateMetaDataType.Empty);
+          createMarkButton("#btnMarkNoGrowth", som.plateMetaDataType.NoGrowth);
         }
 
         function projectSlelectionStage(level) {
@@ -327,7 +306,7 @@
             path = "/api/results/curve_mark/set/" + mark + "/" + plateIdx + "/" + row + "/" + col + "/" + project;
           var lockKey = getLock_key();
           wait();
-          GetMarkExperiment(path, lockKey, function (gData) {
+          som.GetMarkExperiment(path, lockKey, function (gData) {
             if (gData.success === true) {
               dispatch.reDrawExp("id" + row + "_" + col, mark);
               var queueCurrent = getQIndexCoord(qIdxOperations.Current);
@@ -343,7 +322,7 @@
         }
 
         //draw Project selection
-        BrowseProjectsRoot(function (browseData) {
+        som.BrowseProjectsRoot(function (browseData) {
           if (browseData === null) {
             alert("ERROR: There was a problem with the API!");
             return;
@@ -372,10 +351,7 @@
 
         function nodeExpand() {
           var parentId = this.id;
-          BrowsePath(parentId, function (browse) {
-            console.log("ParentID:" + parentId);
-            console.log("is project:" + browse.isProject);
-            console.log("paths len:" + browse.paths.length);
+          som.BrowsePath(parentId, function (browse) {
             var parentNode = $("#tblProjects").treetable("node", parentId);
             var nodeToAdd;
             var row;
@@ -397,12 +373,10 @@
                   rows += row;
                 });
               $("#tblProjects").treetable("loadBranch", parentNode, rows);
-              console.log("addedNodes rows:" + rows);
             } else if (browse.isProject) {
               nodeToAdd = $("#tblProjects").treetable("node", "project" + parentId);
               if (!nodeToAdd) {
                 row = '<tr data-tt-id="project' + parentId + '" data-tt-parent-id="' + parentId + '"  >';
-                console.log("button id: " + browse.projectDetails);
                 row += "<td><button id='" + browse.projectDetails.project + "'>Here is your project</button></td>";
                 row += "</tr>";
                 $("#tblProjects").treetable("loadBranch", parentNode, row);
@@ -412,13 +386,12 @@
               }
             }
           });
-          console.log("Expanded: " + this.id);
         }
 
         function getLock(callback) {
           var lockPath = $("#spLock").data("lock_path");
           wait();
-          GetAPILock(lockPath,
+          som.GetAPILock(lockPath,
             function (lockData) {
               if (lockData != null) {
                 var lock = lockData.lock_key;
@@ -433,7 +406,6 @@
         }
 
         function fillProjectDetails(projectDetails) {
-          console.log("Project details:" + projectDetails.project);
           $("#spProject_name").text(projectDetails.project_name);
           $("#spProject").text(projectDetails.project);
           $("#spExtraction_date").text(projectDetails.extraction_date);
@@ -442,6 +414,7 @@
           $("#spLock").data("lock_path", projectDetails.add_lock);
           $("#spLock").data("unLock_path", projectDetails.remove_lock);
           $("#spQidx").data("qIdx", "");
+          var baseUrl = som.getSharedValue('baseUrl');
           var inner = "";
           inner += "<li><a href='" + baseUrl + "/api/results/export/phenotypes/Absolute/" + projectDetails.project + "'>Absolute</a></li>";
           inner += "<li><a href='" + baseUrl + "/api/results/export/phenotypes/NormalizedRelative/" + projectDetails.project + "'>Normalized Relative</a></li>";
@@ -488,7 +461,7 @@
         //draw Reference Offset selection
         function drawReferenceOffsetSelecton() {
           var elementName = "selRefOffSets";
-          GetReferenceOffsets(function (offsets) {
+          som.GetReferenceOffsets(function (offsets) {
             d3.select("#" + elementName).remove();
             var selPhen = d3.select("#divReferenceOffsetSelector")
               .append("select")
@@ -507,9 +480,8 @@
         //draw run phenotypes selection
         function drawRunPhenotypeSelection(path) {
           projectSlelectionStage("Phenotypes");
-          console.log("Phenotypes path: " + path);
           var lockKey = getLock_key();
-          GetRunPhenotypes(path, lockKey, function (runPhenotypes) {
+          som.GetRunPhenotypes(path, lockKey, function (runPhenotypes) {
             d3.select("#" + selRunPhenotypesName).remove();
             var selPhen = d3.select("#divRunPhenotypesSelector")
               .append("select")
@@ -527,9 +499,8 @@
         };
 
         function drawRunNormalizedPhenotypeSelection(path) {
-          console.log("Norm Phenotypes path: " + path);
           var lockKey = getLock_key();
-          GetRunPhenotypes(path, lockKey, function (runPhenotypes) {
+          som.GetRunPhenotypes(path, lockKey, function (runPhenotypes) {
             d3.select("#" + selRunNormPhenotypesName).remove();
             var selPhen = d3.select("#divRunPhenotypesSelector")
               .append("select")
@@ -554,9 +525,8 @@
           if (!path)
             return;
           projectSlelectionStage("Plates");
-          console.log("plates: " + path);
           var lockKey = getLock_key();
-          GetPhenotypesPlates(path, lockKey, function (phenotypePlates) {
+          som.GetPhenotypesPlates(path, lockKey, function (phenotypePlates) {
             //plate buttons
             d3.selectAll(".plateSelectionButton").remove();
             var selPlates = d3.select("#divPhenotypePlatesSelecton");
@@ -590,7 +560,7 @@
           var plateIdx = $("#currentSelection").data("plateIdx");
           var project = $("#currentSelection").data("project");
           var path = "/api/results/gridding/" + plateIdx + "/" + project;
-          $("#imgGridding").attr("src", baseUrl + path);
+          $("#imgGridding").attr("src", som.getSharedValue('baseUrl') + path);
           $("#dialogGrid").show();
           $("#dialogGrid").dialog();
         };
@@ -601,7 +571,6 @@
           var plateIdx = phenotypePlates.index;
           var project = $("#spProject").text();
           currentSelectedPlate = plateIdx;
-          console.log("experiment: " + path);
           $("#currentSelection").data("plateIdx", plateIdx);
           $("#currentSelection").data("project", project);
           $("#spnPlateIdx").text((plateIdx+1));
@@ -611,7 +580,7 @@
           var phenotypePath = isNormalized ? "/api/results/normalized_phenotype/###/" : "/api/results/phenotype/###/";
           var metaDataPath = phenotypePath + plateIdx + "/" + project;
           var lockKey = getLock_key();
-          GetPlateData(path, isNormalized, metaDataPath, "###", lockKey, function (data) {
+          som.GetPlateData(path, isNormalized, metaDataPath, "###", lockKey, function (data) {
             $("#plate").empty();
             var allNull = isPlateAllNull(data.plate_data);
             if (!data || allNull) {
@@ -623,14 +592,13 @@
             var growthMetaData = data.Growth_metaData;
             var phenotypeName = data.plate_phenotype;
             qIndexQueue = data.plate_qIdxSort;
-            var plate = DrawPlate("#plate", plateData, growthMetaData, plateMetaData, phenotypeName, dispatch);
+            var plate = som.DrawPlate("#plate", plateData, growthMetaData, plateMetaData, phenotypeName, dispatch);
             var row = $("#currentSelection").data("row");
             var col = $("#currentSelection").data("col");
             if (row && col)
               setExperimentByCoord(row, col);
             stopWait();
             plate.on("SelectedExperiment", function (datah) {
-                console.log("dispatched:" + datah.coord);
                 var arr = datah.coord.split(",");
                 var row = arr[0];
                 var col = arr[1];
@@ -642,11 +610,10 @@
                 $("#currentSelection").data("project", $("#spProject").text());
                 // e.g. /api/results/curves/1/31/0/Martin_wt1/analysis
                 var expPath = "/api/results/curves/" + plateIdx + "/" + row + "/" + col + "/" + project;
-                console.log("curve path:" + expPath);
                 var lockKey = getLock_key();
-                GetExperimentGrowthData(expPath, lockKey, function (gData) {
+                som.GetExperimentGrowthData(expPath, lockKey, function (gData) {
                   $("#graph").empty();
-                  DrawCurves("#graph", gData, datah.metaDataGt, datah.metaDataGtWhen, datah.metaDataYield);
+                  som.DrawCurves("#graph", gData, datah.metaDataGt, datah.metaDataGtWhen, datah.metaDataYield);
                 });
               });
           });

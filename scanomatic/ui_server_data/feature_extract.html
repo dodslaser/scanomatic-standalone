@@ -2,16 +2,12 @@
 <html>
 <head lang="en">
   <meta charset="UTF-8">
+  <script src="/js/somlib/som.js"></script>
+  <script>
+    som.setSharedValue("currentFixtureId", "#current-fixture");
+  </script>
   <link rel="stylesheet" type="text/css" href="style/main.css?ver=_-_VERSIONTAG_-_">
   <link rel="stylesheet" type="text/css" href="style/analysis.css?ver=_-_VERSIONTAG_-_">
-  <script src="/js/external/jquery.js"></script>
-  <script src="/js/external/jquery-ui.js"></script>
-  <script src="/js/helpers.js?ver=_-_VERSIONTAG_-_"></script>
-  <script src="/js/fixtures.js?ver=_-_VERSIONTAG_-_"></script>
-  <script src="/js/analysis.js?ver=_-_VERSIONTAG_-_"></script>
-  <script>
-    current_fixture_id = "#current-fixture";
-  </script>
   <title>Scan-o-Matic</title>
 </head>
 <body>
@@ -24,9 +20,9 @@
           Analysis folder
         </label>
         <input name="extract" id="extract" class="long"
-          onchange="set_analysis_directory(this, true);"
-          onfocus="set_analysis_directory(this, true);"
-          onkeyup="set_analysis_directory(this, true);"/>
+          onchange="som.setAnalysisDirectory(this, true);"
+          onfocus="som.setAnalysisDirectory(this, true);"
+          onkeyup="som.setAnalysisDirectory(this, true);"/>
 
         <div class="indented"><em>
           The analysis folder is the folder produced by the above
@@ -50,7 +46,7 @@
         </div>
 
         <button type="button" id="submit-button2"
-            onclick="Extract(this);">
+            onclick="som.Extract(this);">
           Run Feature Extraction
         </button>
 
@@ -72,14 +68,14 @@
           created in which the output is stored.
         </em></div>
         <button type="button" id="submit-button3"
-            onclick="BioscreenExtract(this);">
+            onclick="som.BioscreenExtract(this);">
           Run Feature Extraction
         </button>
       </form>
     </div>
   </div>
   <script>
-    InputEnabled($("#submit-button2"), false);
+    som.InputEnabled($("#submit-button2"), false);
   </script>
 </body>
 </html>

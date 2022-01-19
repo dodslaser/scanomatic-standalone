@@ -1,5 +1,8 @@
-function get_free_scanners(target_id) {
-  const target = $(target_id);
+import $ from 'jquery';
+import { API, unselect } from './helpers';
+
+export default function getFreeScanners(targetId) {
+  const target = $(targetId);
   target.empty();
   API.get('/api/status/scanners/free')
     .then((data) => {

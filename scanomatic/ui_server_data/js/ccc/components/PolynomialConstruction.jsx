@@ -58,11 +58,12 @@ export default function PolynomialConstruction(props) {
             onChange={props.onDegreeOfPolynomialChange}
             value={props.degreeOfPolynomial}
           >
-            {degrees.map(d => <option key={d} value={d}>{d}</option>)}
+            {degrees.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         {' '}
         <button
+          type="button"
           className="btn btn-default btn-construct"
           onClick={props.onConstruction}
         >
@@ -70,6 +71,7 @@ export default function PolynomialConstruction(props) {
         </button>
       </div>
       <button
+        type="submit"
         className="btn btn-success btn-finalize"
         disabled={!props.polynomial}
         onClick={props.onFinalizeCCC}

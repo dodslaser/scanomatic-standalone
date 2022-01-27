@@ -5,16 +5,18 @@ from typing import Any, Union
 import numpy as np
 
 from scanomatic.data_processing.calibration import get_image_json_from_ccc
+from scanomatic.image_analysis.grayscale import get_grayscale
+from scanomatic.io import jsonizer
 from scanomatic.io.ccc_data import CCCImage
 from scanomatic.io.fixtures import Fixtures, FixtureSettings
 from scanomatic.io.logger import get_logger
-from scanomatic.models.factories.fixture_factories import FixturePlateFactory
 from scanomatic.models.fixture_models import (
     FixturePlateModel,
     GrayScaleAreaModel
 )
 from scanomatic.image_analysis.grayscale_detection import (
     detect_grayscale,
+    get_grayscale_im_section,
 )
 from scanomatic.image_analysis.exceptions import GrayscaleError
 
@@ -423,10 +425,15 @@ class FixtureImage:
     def analyse_grayscale(self) -> None:
         current_model = self["current"].model
         try:
-            current_model.grayscale.section_values = detect_grayscale(
+            grayscale_im = get_grayscale_im_section(
                 self.im,
                 current_model.grayscale,
-            )[1]
+            )
+            grayscale_config = get_grayscale(current_model.grayscale.name)
+            current_model.grayscale.section_values = detect_grayscale(
+                grayscale_im,
+                grayscale_config,
+            )
 
         except GrayscaleError:
             self._logger.warning("Failed analysing grayscale")
@@ -505,7 +512,7 @@ class FixtureImage:
         )
 
         current_model.plates = type(current_model.plates)(
-            FixturePlateFactory.copy(plate) for plate in ref_model.plates
+            jsonizer.copy(plate) for plate in ref_model.plates
         )
 
         for plate in current_model.plates:

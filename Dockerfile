@@ -1,37 +1,50 @@
-FROM node:16 as npmbuilder
-COPY . /src
+FROM oven/bun:1.2 AS jsbuilder
 WORKDIR /src
-RUN npm ci
-RUN npm run build
+COPY package.json bun.lock /src/
+RUN bun ci
+COPY .babelrc webpack.config.js /src/
+COPY scanomatic/ui_server_data /src/scanomatic/ui_server_data
+RUN bun run build
 
-FROM python:3.9
-RUN apt-get update
-RUN export DEBIAN_FRONTEND=noninteractive \
-    && ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime \
-    && apt-get install -y tzdata \
+FROM python:3.9-slim-bookworm AS pybuilder
+RUN apt-get update && apt-get install -y gcc python3-dev
+COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+WORKDIR /app
+COPY uv.lock pyproject.toml /app/
+# Install deps first to optimize caching as they change less often
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-install-project --no-dev
+COPY . /app
+# Install scan-o-matic itself last
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-dev
+
+
+FROM python:3.9-slim-bookworm
+ENV DEBIAN_FRONTEND=noninteractive
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt update && apt-get --no-install-recommends install -y \
+    tzdata \
+    usbutils software-properties-common \
+    net-tools iputils-ping \
+    libsane sane-utils libsane-common \
+    nmap \
+    && rm -rf /var/lib/apt/lists/*
+# Set timezone to UTC
+RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime \
     && dpkg-reconfigure --frontend noninteractive tzdata
-RUN apt-get -y install usbutils software-properties-common
-# net-tools & iputils-ping are used in the xml-writer which should be removed soon
-RUN apt-get -y install net-tools iputils-ping
-RUN apt-get -y install libsane sane-utils libsane-common
 # Add scanner id to sane config in case scanimage -L cannot find the scanner automatically
 # Epson V800
 RUN echo "usb 0x4b8 0x12c" >> /etc/sane.d/epson2.conf
 # Epson V700
 RUN echo "usb 0x4b8 0x151" >> /etc/sane.d/epson2.conf
-
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
-
-COPY data/ /tmp/data/
-COPY scripts/ /tmp/scripts/
-COPY scanomatic/ /tmp/scanomatic/
-COPY setup.py /tmp/setup.py
-COPY setup_tools.py /tmp/setup_tools.py
-COPY get_installed_version.py /tmp/get_installed_version.py
-COPY --from=npmbuilder /src/scanomatic/ui_server_data/js/somlib /tmp/scanomatic/ui_server_data/js/somlib
-COPY setup_config.py /tmp/setup_config.py
-
-RUN cd /tmp && python3.9 setup.py install --default
-CMD /tmp/setup_config.py && scan-o-matic --no-browser
+# Copy default scan-o-matic config
+COPY data/config /root/.scan-o-matic/config/
+COPY --from=jsbuilder /src/scanomatic/ui_server_data/js/somlib /tmp/scanomatic/ui_server_data/js/somlib
+COPY --from=pybuilder /app /app
+ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 5000
+WORKDIR /app
+CMD scan-o-matic --no-browser

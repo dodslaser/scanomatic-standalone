@@ -19,12 +19,7 @@ def get_proc_name(proc):
     except TypeError:
         return proc.name
 
-#
-# EXECUTION BEHAVIOUR
-#
-
-if __name__ == "__main__":
-
+def main():
     parser = ArgumentParser(description="""Scan-o-Matic""")
 
     parser.add_argument(
@@ -117,3 +112,6 @@ if __name__ == "__main__":
         args.port,
         args.debug,
         open_browser_url=args.browser)
+
+if __name__ == "__main__":
+    main()

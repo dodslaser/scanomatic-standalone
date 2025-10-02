@@ -19,7 +19,7 @@ import scanomatic.server.interface_builder as interface_builder
 
 _LOGGER = get_logger("Scan-o-Matic server launcher")
 
-if __name__ == "__main__":
+def main():
     _LOGGER.info("Launching RPC Server")
     setproctitle.setproctitle("SoM {0}".format("Server"))
     basename = os.path.basename(sys.argv[0])[:15]
@@ -56,3 +56,6 @@ if __name__ == "__main__":
 
     _LOGGER.info("Building interface")
     interface_builder.InterfaceBuilder()
+
+if __name__ == "__main__":
+    main()

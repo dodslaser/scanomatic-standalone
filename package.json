@@ -1,7 +1,8 @@
 {
   "scripts": {
     "test": "BABEL_ENV=test karma start --single-run",
-    "build": "webpack",
+    "build:som": "LIB_NAME=som vite build",
+    "build:ccc": "LIB_NAME=ccc vite build",
     "lint": "eslint --ext mjs,jsx,js scanomatic/ui_server_data/js/ccc scanomatic/ui_server_data/js/tests"
   },
   "devDependencies": {
@@ -30,8 +31,7 @@
     "karma-webpack": "^2.0.13",
     "react-test-renderer": "^16.0.0",
     "style-loader": "^2.0.0",
-    "webpack": "^4.46.0",
-    "webpack-cli": "^4.9.2"
+    "vite": "npm:rolldown-vite@latest"
   },
   "dependencies": {
     "bootstrap": "^3.4.0",

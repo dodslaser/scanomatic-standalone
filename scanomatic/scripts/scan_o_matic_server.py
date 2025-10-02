@@ -8,18 +8,23 @@ __version__ = "0.9991"
 __maintainer__ = "Martin Zackrisson"
 __email__ = "martin.zackrisson@gu.se"
 __status__ = "Development"
+
 import os
 import sys
 
 import psutil
-from scanomatic.io.logger import get_logger
 import setproctitle
 
+from scanomatic.scripts.ensure_config import ensure_config
+
+ensure_config()
+
 import scanomatic.server.interface_builder as interface_builder
+from scanomatic.io.logger import get_logger
 
 _LOGGER = get_logger("Scan-o-Matic server launcher")
 
-if __name__ == "__main__":
+def main():
     _LOGGER.info("Launching RPC Server")
     setproctitle.setproctitle("SoM {0}".format("Server"))
     basename = os.path.basename(sys.argv[0])[:15]
@@ -56,3 +61,6 @@ if __name__ == "__main__":
 
     _LOGGER.info("Building interface")
     interface_builder.InterfaceBuilder()
+
+if __name__ == "__main__":
+    main()

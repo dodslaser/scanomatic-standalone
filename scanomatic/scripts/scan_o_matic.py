@@ -6,6 +6,10 @@ from time import sleep
 import psutil
 import setproctitle
 
+from scanomatic.scripts.ensure_config import ensure_config
+
+ensure_config()
+
 from scanomatic.io.logger import get_logger
 from scanomatic.ui_server import ui_server
 
@@ -19,12 +23,7 @@ def get_proc_name(proc):
     except TypeError:
         return proc.name
 
-#
-# EXECUTION BEHAVIOUR
-#
-
-if __name__ == "__main__":
-
+def main():
     parser = ArgumentParser(description="""Scan-o-Matic""")
 
     parser.add_argument(
@@ -112,8 +111,12 @@ if __name__ == "__main__":
     _logger.info("Waiting 1 second before launch... please hold.")
     sleep(1)
     _logger.info("Launching...")
+
     ui_server.launch(
         args.host,
         args.port,
         args.debug,
         open_browser_url=args.browser)
+
+if __name__ == "__main__":
+    main()

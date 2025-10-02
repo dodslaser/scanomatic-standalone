@@ -8,6 +8,22 @@ services:
     environment:
       - LOGGING_LEVEL=20
     volumes:
-      - ${SOM_SETTINGS:-/tmp/.scan-o-matic}:/root/.scan-o-matic
-      - ${SOM_PROJECTS_ROOT:-/tmp/SoM}:/somprojects
+      - ${SOM_SETTINGS:-som-settings}:/root/.scan-o-matic
+      - ${SOM_PROJECTS_ROOT:-som-projects}:/somprojects
       - /dev/bus/usb:/dev/bus/usb
+    develop:
+      watch:
+        - path: .
+          include:
+            - scanomatic/**/*
+            - images/**/*
+            - data/config/**/*
+            - bun.lock
+            - package.json
+            - vite.config.js
+            - pyproject.toml
+            - Dockerfile
+          action: rebuild
+volumes:
+  som-projects:
+  som-settings:

@@ -321,7 +321,8 @@ class PowerManagerLan(PowerManagerNull):
         # SEARCHING FOR IP SPECIFIC DEPENDENCIES
         try:
             import nmap
-        except ImportError:
+            nm = nmap.PortScanner()
+        except (ImportError, nmap.PortScannerError):
             self._logger.error(
                 "Can't scan for Power Manager without nmap installed",
             )
@@ -337,7 +338,6 @@ class PowerManagerLan(PowerManagerNull):
 
         # PINGSCAN ALL IP:S
         self._logger.info("LAN PM, Scanning hosts (may take a while...)")
-        nm = nmap.PortScanner()
         nm_res = nm.scan(hosts="192.168.0.1-255", arguments="-sP")
 
         # FILTER OUT THOSE RESPONDING

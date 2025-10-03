@@ -30,7 +30,7 @@ class Paths(SingeltonOneInit):
         Paths._make_directory(self.config)
         self.fixtures = os.path.join(self.config, "fixtures")
         Paths._make_directory(self.fixtures)
-        self.images = os.path.join(scanomatic.get_location(), "images")
+        self.images = os.path.join(scanomatic.ROOT.parent, "images")
 
         self.source_location_file = os.path.join(
             self.root,
@@ -55,8 +55,8 @@ class Paths(SingeltonOneInit):
         )
 
         self.ui_root = os.path.join(
-            scanomatic.get_location(),
-            "ui_server_data",
+            scanomatic.ROOT.parent,
+            "frontend",
         )
         self.ui_css = os.path.join(self.ui_root, "style")
         self.ui_js = os.path.join(self.ui_root, "js")

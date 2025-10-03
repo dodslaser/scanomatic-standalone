@@ -3,7 +3,7 @@
     "test": "BABEL_ENV=test karma start --single-run",
     "build:som": "LIB_NAME=som vite build",
     "build:ccc": "LIB_NAME=ccc vite build",
-    "lint": "eslint --ext mjs,jsx,js scanomatic/ui_server_data/js/ccc scanomatic/ui_server_data/js/tests"
+    "lint": "eslint --ext mjs,jsx,js frontend/js/ccc frontend/js/tests"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",

@@ -2,6 +2,7 @@
 """Part of analysis work-flow that holds a grid arrays"""
 
 import os
+from pathlib import Path
 
 from . import (
     data_processing,
@@ -15,6 +16,8 @@ from . import (
     util,
     scripts,
 )
+
+ROOT = Path(__file__).parent.absolute()
 
 __author__ = "Martin Zackrisson"
 __copyright__ = "Swedish copyright laws apply"
@@ -45,7 +48,3 @@ def get_version() -> str:
 
 def get_branch() -> str:
     return __branch
-
-
-def get_location() -> str:
-    return os.path.dirname(__file__)

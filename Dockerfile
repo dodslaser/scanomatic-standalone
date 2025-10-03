@@ -3,7 +3,7 @@ WORKDIR /src
 COPY package.json bun.lock /src/
 RUN bun ci
 COPY .babelrc vite.config.js /src/
-COPY scanomatic/ui_server_data /src/scanomatic/ui_server_data
+COPY frontend /src/frontend
 RUN bun run build:som
 RUN bun run build:ccc
 
@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y gcc python3-dev
 COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
-COPY uv.lock pyproject.toml /app/
+COPY README.md uv.lock pyproject.toml /app/
 # Install deps first to optimize caching as they change less often
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-install-project --no-dev
-COPY . /app
+COPY scanomatic /app/scanomatic
 # Install scan-o-matic itself last
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-dev
@@ -44,8 +44,10 @@ RUN echo "usb 0x4b8 0x151" >> /etc/sane.d/epson2.conf
 # Copy default scan-o-matic config
 COPY data/config /root/.scan-o-matic/config/
 COPY --from=pybuilder /app /app
-COPY --from=jsbuilder /src/scanomatic/ui_server_data/js/somlib /app/scanomatic/ui_server_data/js/somlib
+COPY --from=jsbuilder /src/frontend /app/frontend
+COPY images /app/images
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 5000
 WORKDIR /app
 CMD scan-o-matic --no-browser
+

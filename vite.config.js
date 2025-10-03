@@ -3,15 +3,15 @@ import { defineConfig } from 'vite'
 import { replacePlugin } from 'rolldown/experimental';
 
 const libPaths = {
-  ccc: path.resolve(__dirname, 'scanomatic/ui_server_data/js/ccc/'),
-  som: path.resolve(__dirname, 'scanomatic/ui_server_data/js/som/'),
+  ccc: path.resolve(__dirname, 'frontend/js/ccc/'),
+  som: path.resolve(__dirname, 'frontend/js/som/'),
 }
 const libName = process.env.LIB_NAME || 'som'
 
 export default defineConfig({
   mode: 'production',
   build: {
-    outDir: 'scanomatic/ui_server_data/js/somlib',
+    outDir: 'frontend/js/somlib',
     assetsDir: '',
     emptyOutDir: false,
     manifest: false,

@@ -8,22 +8,16 @@ from scanomatic.data_processing.calibration import delete_ccc
 from scanomatic.image_analysis import first_pass_image
 from scanomatic.image_analysis.exceptions import GrayscaleError
 from scanomatic.image_analysis.grayscale import get_grayscale
+from scanomatic.image_analysis.grayscale_detection import detect_grayscale
 from scanomatic.image_analysis.grid_array import GridArray
 from scanomatic.image_analysis.grid_cell import GridCell
-from scanomatic.image_analysis.grayscale_detection import (
-    detect_grayscale
-)
 from scanomatic.io.fixtures import Fixtures
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.io.paths import Paths
 from scanomatic.models.analysis_model import COMPARTMENTS
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
 
-from .general import (
-    get_grayscale_is_valid,
-    json_abort,
-    serve_numpy_as_image,
-    valid_array_dimensions
-)
+from .general import get_grayscale_is_valid, json_abort, serve_numpy_as_image, valid_array_dimensions
 
 
 def get_int_tuple(data):
@@ -547,7 +541,7 @@ def detect_colony(ccc_identifier, image_identifier, plate, x, y):
     grid_path = Paths().ccc_image_plate_grid_pattern.format(
         ccc_identifier, image_identifier, plate)
     try:
-        grid = np.load(grid_path)
+        grid = resilient_numpy_load(grid_path)
     except IOError:
         return json_abort(
             400,

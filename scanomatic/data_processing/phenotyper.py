@@ -1,6 +1,6 @@
 import csv
-import pickle
 import os
+import pickle
 from collections import deque
 from collections.abc import Callable, Generator
 from enum import Enum
@@ -14,19 +14,18 @@ from scipy.signal import convolve  # type: ignore
 from scipy.stats import norm  # type: ignore
 
 import scanomatic.io.image_data as image_data
-import scanomatic.io.jsonizer as jsonizer
 import scanomatic.io.paths as paths
 from scanomatic.data_processing.convolution import (
     EdgeCondition,
     filter_edge_condition,
     get_edge_condition_timed_filter,
-    merge_convolve
+    merge_convolve,
 )
 from scanomatic.data_processing.growth_phenotypes import (
     Phenotypes,
     get_chapman_richards_4parameter_extended_curve,
     get_derivative,
-    get_preprocessed_data_for_phenotypes
+    get_preprocessed_data_for_phenotypes,
 )
 from scanomatic.data_processing.norm import (
     NormState,
@@ -35,30 +34,26 @@ from scanomatic.data_processing.norm import (
     norm_by_diff,
     norm_by_log2_diff,
     norm_by_log2_diff_corr_scaled,
-    norm_by_signal_to_noise
+    norm_by_signal_to_noise,
 )
-from scanomatic.data_processing.phases.analysis import (
-    CurvePhasePhenotypes,
-    get_phase_analysis
-)
-from scanomatic.data_processing.phases.features import (
-    CurvePhaseMetaPhenotypes,
-    VectorPhenotypes,
-    extract_phenotypes
-)
+from scanomatic.data_processing.phases.analysis import CurvePhasePhenotypes, get_phase_analysis
+from scanomatic.data_processing.phases.features import CurvePhaseMetaPhenotypes, VectorPhenotypes, extract_phenotypes
 from scanomatic.data_processing.pheno.save import save_state, save_state_to_zip
 from scanomatic.data_processing.pheno.state import (
-    DEFAULT_NO_GROWTH_THRESHOLD,
     DEFAULT_DOUBLING_THRESHOLD,
+    DEFAULT_NO_GROWTH_THRESHOLD,
     PhenotyperSettings,
-    PhenotyperState
+    PhenotyperState,
 )
 from scanomatic.data_processing.phenotypes import PhenotypeDataType
 from scanomatic.data_processing.strain_selector import StrainSelector
 from scanomatic.generics.phenotype_filter import Filter, FilterArray
+from scanomatic.io import jsonizer
 from scanomatic.io.logger import get_logger
 from scanomatic.io.meta_data import MetaData2
-from scanomatic.io.pickler import safe_load
+from scanomatic.io.numpy import resilient_numpy_load
+from scanomatic.io.pickler import safe_unpickle
+
 from . import mock_numpy_interface
 
 # TODO: Something is wrong with phase features again
@@ -272,21 +267,8 @@ class Phenotyper(mock_numpy_interface.NumpyArrayInterface):
         """
         _p = paths.Paths()
 
-        raw_growth_data = np.load(
-            safe_load(os.path.join(
-                directory_path,
-                _p.phenotypes_input_data,
-            )),
-            allow_pickle=True,
-        )
-
-        times = np.load(
-            safe_load(os.path.join(
-                directory_path,
-                _p.phenotype_times,
-            )),
-            allow_pickle=True,
-        )
+        raw_growth_data = resilient_numpy_load(os.path.join(directory_path, _p.phenotypes_input_data))
+        times = resilient_numpy_load(os.path.join(directory_path, _p.phenotype_times))
 
         phenotyper = cls(
             raw_growth_data,
@@ -296,64 +278,48 @@ class Phenotyper(mock_numpy_interface.NumpyArrayInterface):
         )
 
         try:
-            phenotypes = np.load(
-                safe_load(os.path.join(
-                    directory_path,
-                    _p.phenotypes_raw_npy,
-                )),
-                allow_pickle=True,
-            )
+            phenotypes = resilient_numpy_load(os.path.join(directory_path, _p.phenotypes_raw_npy))
         except (IOError, ValueError):
-            phenotyper._logger.warning(
-                "Could not load Phenotypes, probably too old extraction, please rerun!",  # noqa: E501
-            )
+            phenotyper._logger.warning("Could not load Phenotypes, probably too old extraction, please rerun!")
             phenotypes = None
 
         try:
-            vector_phenotypes = np.load(
-                safe_load(os.path.join(
-                    directory_path,
-                    _p.vector_phenotypes_raw,
-                )),
-                allow_pickle=True,
-            )
+            vector_phenotypes = resilient_numpy_load(os.path.join(directory_path, _p.vector_phenotypes_raw))
         except (IOError, ValueError):
-            phenotyper._logger.warning(
-                "Could not load Vector Phenotypes, probably too old extraction, please rerun!",  # noqa: E501
-            )
+            phenotyper._logger.warning("Could not load Vector Phenotypes, probably too old extraction, please rerun!")
             vector_phenotypes = None
 
         try:
-            vector_meta_phenotypes = np.load(
-                safe_load(os.path.join(
-                    directory_path,
-                    _p.vector_meta_phenotypes_raw,
-                )),
-                allow_pickle=True,
-            )
+            vector_meta_phenotypes = resilient_numpy_load(os.path.join(directory_path, _p.vector_meta_phenotypes_raw))
         except (IOError, ValueError):
-            phenotyper._logger.warning(
-                "Could not load Vector Meta Phenotypes, probably too old extraction, please rerun!",  # noqa: E501
-            )
+            phenotyper._logger.warning("Could not load Vector Meta Phenotypes, probably too old extraction, please rerun!")
             vector_meta_phenotypes = None
 
-        smooth_growth_data = np.load(
-            safe_load(os.path.join(
-                directory_path,
-                _p.phenotypes_input_smooth,
-            )),
-            allow_pickle=True,
-        )
+        smooth_growth_data = resilient_numpy_load(os.path.join(directory_path, _p.phenotypes_input_smooth))
 
         try:
-            phenotyper._settings = jsonizer.load(os.path.join(
-                directory_path,
-                _p.phenotypes_extraction_params,
-            ))
-        except IOError:
-            phenotyper._logger.warning(
-                "Could not find stored extraction parameters, assuming defaults were used",  # noqa: E501
-            )
+            extraction_params = os.path.join(directory_path, _p.phenotypes_extraction_params)
+            extraction_params_legacy = os.path.join(directory_path, _p.phenotypes_extraction_params_legacy)
+            if os.path.isfile(extraction_params):
+                phenotyper._settings = jsonizer.load(extraction_params)
+            elif os.path.isfile(extraction_params_legacy):
+                extraction_params = resilient_numpy_load(extraction_params_legacy)
+                if len(extraction_params) >= 3:
+                    phenotyper._settings.median_kernel_size = int(extraction_params[0])
+                    phenotyper._settings.gaussian_filter_sigma = float(extraction_params[1])
+                    phenotyper._settings.linear_regression_size = int(extraction_params[2])
+                if len(extraction_params) >= 4:
+                    phenotyper.set_phenotype_inclusion_level(PhenotypeDataType[extraction_params[3].decode() or "Trusted"])
+                if len(extraction_params) >= 6:
+                    phenotyper._settings.no_growth_monotonicity_threshold = float(extraction_params[4])
+                    phenotyper._settings.no_growth_pop_doublings_threshold = float(extraction_params[5])
+            else:
+                raise FileNotFoundError
+        except (IOError, FileNotFoundError):
+            phenotyper._logger.warning("Could not load stored extraction parameters, assuming defaults were used")
+        else:
+            phenotyper._logger.info("Loaded extraction parameters")
+
 
         phenotyper.set('smooth_growth_data', smooth_growth_data)
         phenotyper.set('phenotypes', phenotypes)
@@ -366,63 +332,27 @@ class Phenotyper(mock_numpy_interface.NumpyArrayInterface):
                 "Loading previous filter {0}".format(filter_path),
             )
             try:
-                phenotyper.set(
-                    "phenotype_filter",
-                    np.load(
-                        safe_load(filter_path),
-                        allow_pickle=True,
-                    ),
-                )
+                phenotyper.set("phenotype_filter", resilient_numpy_load(filter_path))
             except (ValueError, IOError):
-                phenotyper._logger.warning(
-                    "Could not load QC Filter, probably too old extraction, please rerun!",  # noqa: E501
-                )
+                phenotyper._logger.warning("Could not load QC Filter, probably too old extraction, please rerun!")
 
-        offsets_path = os.path.join(
-            directory_path,
-            _p.phenotypes_reference_offsets,
-        )
+        offsets_path = os.path.join(directory_path, _p.phenotypes_reference_offsets)
         if os.path.isfile(offsets_path):
-            phenotyper.set(
-                "reference_offsets",
-                np.load(
-                    safe_load(offsets_path),
-                    allow_pickle=True,
-                ),
-            )
+            phenotyper.set("reference_offsets", resilient_numpy_load(offsets_path))
 
-        normalized_phenotypes = os.path.join(
-            directory_path,
-            _p.normalized_phenotypes,
-        )
+        normalized_phenotypes = os.path.join(directory_path, _p.normalized_phenotypes,)
         if os.path.isfile(normalized_phenotypes):
             try:
-                phenotyper.set(
-                    "normalized_phenotypes",
-                    np.load(
-                        safe_load(normalized_phenotypes),
-                        allow_pickle=True,
-                    ),
-                )
+                phenotyper.set("normalized_phenotypes", resilient_numpy_load(normalized_phenotypes))
             except (ValueError, IOError):
-                phenotyper._logger.warning(
-                    "Could not load Normalized Phenotypes, probably too old extraction, please rerun!",  # noqa: E501
-                )
+                phenotyper._logger.warning("Could not load Normalized Phenotypes, probably too old extraction, please rerun!")
 
-        filter_undo_path = os.path.join(
-            directory_path,
-            _p.phenotypes_filter_undo,
-        )
+        filter_undo_path = os.path.join(directory_path, _p.phenotypes_filter_undo)
         if os.path.isfile(filter_undo_path):
             try:
-                phenotyper.set(
-                    "phenotype_filter_undo",
-                    pickle.load(safe_load(filter_undo_path)),
-                )
+                phenotyper.set("phenotype_filter_undo", safe_unpickle(filter_undo_path))
             except EOFError:
-                phenotyper._logger.warning(
-                    "Could not load saved undo, file corrupt!",
-                )
+                phenotyper._logger.warning("Could not load saved undo, file corrupt!")
 
         meta_data_path = os.path.join(
             directory_path,
@@ -430,14 +360,9 @@ class Phenotyper(mock_numpy_interface.NumpyArrayInterface):
         )
         if os.path.isfile(meta_data_path):
             try:
-                phenotyper.set(
-                    "meta_data",
-                    pickle.load(safe_load(meta_data_path)),
-                )
+                phenotyper.set("meta_data", safe_unpickle(meta_data_path))
             except EOFError:
-                phenotyper._logger.warning(
-                    "Could not load saved meta-data, file corrupt!",
-                )
+                phenotyper._logger.warning("Could not load saved meta-data, file corrupt!")
 
         return phenotyper
 
@@ -510,14 +435,8 @@ class Phenotyper(mock_numpy_interface.NumpyArrayInterface):
                 times_data_path += ".npy"
 
         return cls(
-            np.load(
-                safe_load(data_directory),
-                allow_pickle=True,
-            ),
-            np.load(
-                safe_load(times_data_path),
-                allow_pickle=True,
-            ),
+            resilient_numpy_load(data_directory),
+            resilient_numpy_load(times_data_path),
             base_name=path,
             run_extraction=True,
             **kwargs

@@ -1,8 +1,8 @@
 import os
 from typing import Optional, cast
-from scanomatic.io.jsonizer import JSONSerializationError, dump, load_first
-from scanomatic.io.logger import get_logger
 
+from scanomatic.io import jsonizer, legacy
+from scanomatic.io.logger import get_logger
 from scanomatic.models.factories.fixture_factories import FixtureFactory
 from scanomatic.models.fixture_models import FixtureModel
 
@@ -27,8 +27,8 @@ class FixtureSettings:
             return FixtureFactory.create(path=self._conf_path, name=name)
 
         try:
-            val = load_first(self._conf_path)
-        except JSONSerializationError:
+            val = jsonizer.load_first(self._conf_path) or legacy.load_first(self._conf_path, FixtureFactory)
+        except jsonizer.JSONSerializationError:
             self._logger.error(
                 "Trying to load an outdated fixture at {0}, this won't work".format(  # noqa: E501
                     self._conf_path,
@@ -83,7 +83,7 @@ class FixtureSettings:
         return None
 
     def save(self) -> None:
-        dump(
+        jsonizer.dump(
             self.model,
             self.path,
             merge=True,

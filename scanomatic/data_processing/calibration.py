@@ -10,10 +10,7 @@ from scipy.optimize import leastsq  # type: ignore
 from scipy.stats import linregress  # type: ignore
 
 from scanomatic.generics.maths import mid50_mean
-from scanomatic.image_analysis.image_basics import (
-    Image_Transpose,
-    load_image_to_numpy
-)
+from scanomatic.image_analysis.image_basics import Image_Transpose, load_image_to_numpy
 from scanomatic.io.ccc_data import (
     CalibrationEntryStatus,
     CCCImage,
@@ -26,9 +23,10 @@ from scanomatic.io.ccc_data import (
     get_polynomal_entry,
     load_cccs,
     save_ccc,
-    validate_polynomial_format
+    validate_polynomial_format,
 )
 from scanomatic.io.logger import get_logger
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.io.paths import Paths
 
 __CCC: dict[str, Any] = {}
@@ -374,7 +372,7 @@ def _get_im_slice(im: np.ndarray, model) -> np.ndarray:
 
 def get_grayscale_slice(identifier, image_identifier):
     try:
-        return np.load(Paths().ccc_image_gs_slice_pattern.format(
+        return resilient_numpy_load(Paths().ccc_image_gs_slice_pattern.format(
             identifier,
             image_identifier,
         ))
@@ -391,7 +389,7 @@ def get_plate_slice(
 
     if gs_transformed:
         try:
-            return np.load(
+            return resilient_numpy_load(
                 Paths().ccc_image_plate_transformed_slice_pattern.format(
                     identifier,
                     image_identifier,
@@ -411,7 +409,7 @@ def get_plate_slice(
             return None
     else:
         try:
-            return np.load(
+            return resilient_numpy_load(
                 Paths().ccc_image_plate_slice_pattern.format(
                     identifier,
                     image_identifier,

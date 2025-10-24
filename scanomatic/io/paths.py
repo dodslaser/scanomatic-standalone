@@ -103,6 +103,7 @@ class Paths(SingeltonOneInit):
         self.phenotypes_input_data = "curves_raw.npy"
         self.phenotypes_input_smooth = "curves_smooth.npy"
         self.phenotypes_extraction_params = "phenotype_params.json"
+        self.phenotypes_extraction_params_legacy = "phenotype_params.npy"
         self.phenotype_times = "phenotype_times.npy"
         self.phenotypes_extraction_log = "phenotypes.extraction.log"
         self.phenotypes_extraction_instructions = "phenotypes.extraction.instructions"

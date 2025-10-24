@@ -6,19 +6,11 @@ from typing import Optional
 from flask import jsonify, request
 
 from scanomatic.image_analysis.grid_array import GridArray
-from scanomatic.io.jsonizer import load_first
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.paths import Paths
-from scanomatic.models.analysis_model import (
-    AnalysisModel,
-    DefaultPinningFormats
-)
+from scanomatic.models.analysis_model import AnalysisModel, DefaultPinningFormats
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
-from scanomatic.ui_server.general import (
-    convert_path_to_url,
-    convert_url_to_path,
-    get_search_results,
-    json_response
-)
+from scanomatic.ui_server.general import convert_path_to_url, convert_url_to_path, get_search_results, json_response
 
 from .general import get_image_data_as_array
 
@@ -99,7 +91,7 @@ def add_routes(app):
         path = convert_url_to_path(project)
 
         analysis_file = os.path.join(path, Paths().analysis_model_file)
-        model: AnalysisModel = load_first(analysis_file)
+        model: AnalysisModel = jsonizer.load_first(analysis_file) or legacy.load_first(analysis_file, AnalysisModelFactory)
 
         analysis_logs = tuple(
             chain(((

@@ -6,21 +6,19 @@ from typing import Optional, cast
 import scanomatic.image_analysis.analysis_image as analysis_image
 import scanomatic.io.first_pass_results as first_pass_results
 import scanomatic.io.image_data as image_data
-from scanomatic.io.logger import get_logger
 import scanomatic.io.rpc_client as rpc_client
 from scanomatic.data_processing.project import remove_state_from_path
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.app_config import Config as AppConfig
-from scanomatic.io.jsonizer import copy, dump, load_first
+from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.models.analysis_model import AnalysisModel, AnalysisModelFields
 from scanomatic.models.compile_project_model import CompileImageAnalysisModel
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
+from scanomatic.models.factories.factory_lookup import get_factory
 from scanomatic.models.factories.features_factory import FeaturesFactory
 from scanomatic.models.factories.scanning_factory import ScanningModelFactory
-from scanomatic.models.fixture_models import (
-    FixturePlateModel,
-    GrayScaleAreaModel
-)
+from scanomatic.models.fixture_models import FixturePlateModel, GrayScaleAreaModel
 from scanomatic.models.rpc_job_models import JOB_TYPE, RPCjobModel
 from scanomatic.models.scanning_model import ScanningModel
 from scanomatic.models.validators.validate import get_invalid, validate
@@ -231,7 +229,7 @@ class AnalysisEffector(proc_effector.ProcessEffector):
                 ),
             )
 
-            image_model.fixture.grayscale = cast(GrayScaleAreaModel, copy(
+            image_model.fixture.grayscale = cast(GrayScaleAreaModel, jsonizer.copy(
                 self._reference_compilation_image_model.fixture.grayscale,
             ))
 
@@ -254,7 +252,7 @@ class AnalysisEffector(proc_effector.ProcessEffector):
                 self._reference_compilation_image_model.fixture.orientation_marks_y  # noqa: E501
             ]
             image_model.fixture.plates = [
-                cast(FixturePlateModel, copy(m)) for m in
+                cast(FixturePlateModel, jsonizer.copy(m)) for m in
                 self._reference_compilation_image_model.fixture.plates
             ]
 
@@ -328,7 +326,7 @@ class AnalysisEffector(proc_effector.ProcessEffector):
             self._filter_pinning_on_included_plates()
 
         if self._original_model:
-            dump(
+            jsonizer.dump(
                 self._original_model,
                 os.path.join(
                     self._analysis_job.output_directory,
@@ -455,7 +453,7 @@ class AnalysisEffector(proc_effector.ProcessEffector):
             )
 
         allow_start = validate(self._analysis_job)
-        self._original_model = copy(self._analysis_job)
+        self._original_model = jsonizer.copy(self._analysis_job)
         AnalysisModelFactory.set_absolute_paths(self._analysis_job)
 
         # Make logger start logging to disk
@@ -466,10 +464,10 @@ class AnalysisEffector(proc_effector.ProcessEffector):
         )
         self._logger = get_logger(logger_name, logging_target)
 
-        self._scanning_instructions = load_first(
-            Paths().get_scan_instructions_path_from_compile_instructions_path(  # noqa: E501
-                self._analysis_job.compile_instructions,
-            ),
+        scan_instructions_path = Paths().get_scan_instructions_path_from_compile_instructions_path(self._analysis_job.compile_instructions)
+        self._scanning_instructions = (
+            jsonizer.load_first(scan_instructions_path)
+            or legacy.load_first(scan_instructions_path, ScanningModelFactory)
         )
 
         if not self._scanning_instructions:

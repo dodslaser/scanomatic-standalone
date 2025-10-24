@@ -2,11 +2,18 @@ import copy
 import types
 import warnings
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from logging import Logger
 from typing import Any, Optional, Type, Union, cast
 
 from scanomatic.generics.model import Model
 from scanomatic.io.logger import get_logger
+
+
+@dataclass
+class _SectionsLink:
+    _subfactory: Type["AbstractModelFactory"]
+    _section_name: str
 
 
 class UnserializationError(ValueError):
@@ -263,14 +270,8 @@ class AbstractModelFactory:
             except (AttributeError, ValueError, TypeError):
                 try:
                     return cast(Sequence, dtype)[obj]
-                except (AttributeError, KeyError, IndexError, TypeError):
-                    cls.get_logger().error(
-                        "Having problems enforcing '{0}' to be type '{1}' in supplied settings '{2}'.".format(  # noqa: E501
-                            obj,
-                            dtype,
-                            settings,
-                        ),
-                    )
+                except (AttributeError, KeyError, IndexError, TypeError) as exc:
+                    cls.get_logger().error("Having problems enforcing '%s' to be type '%s' in supplied settings '%s': %s", obj, dtype, settings, exc)
                     return obj
 
         for key in keys:

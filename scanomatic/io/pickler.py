@@ -1,37 +1,42 @@
 import os
+import pickle
+from contextlib import contextmanager
 from typing import IO
 
 
-def safe_load(path, return_string=False):
-    version_compatibility = _RefactoringPhases()
-    fh = SafeProxyFileObject(path, version_compatibility)
-    version_compatibility.io = fh
-    if return_string:
-        return os.linesep.join(fh.readlines())
-    else:
-        return fh
+@contextmanager
+def safe_open(path):
+    fh = None
+    try:
+        fh = SafeProxyFileObject(path, _RefactoringPhases())
+        yield fh
+    finally:
+        if fh is not None:
+            fh.close()
+
+
+def safe_unpickle(file):
+    with safe_open(file) as fh:
+        return pickle.load(fh)
 
 
 class _RefactoringPhases:
     def __init__(self):
         """Rewrites pickled data to match refactorings"""
         self._next = None
-        self.io = None
 
-    def __call__(self, line: bytes):
+    def __call__(self, line: bytes, fh: IO):
         """
         Args:
             line (str): A pickled line
         """
-        if not isinstance(self.io, IO):
-            raise AttributeError("Attribute 'io' not initialized properly")
         if self._next is None:
             if line.endswith(
                 b"scanomatic.data_processing.curve_phase_phenotypes",
             ):
-                tell = self.io.tell()
-                _next = self.io.readline()
-                self.io.seek(tell)
+                tell = fh.tell()
+                _next = fh.readline()
+                fh.seek(tell)
 
                 if _next.startswith(b'VectorPhenotypes'):
                     return (
@@ -63,14 +68,17 @@ class _RefactoringPhases:
 class SafeProxyFileObject:
 
     def __init__(self, name, *validation_functions):
-        self.__dict__["__file"] = open(name, mode='rb')
+        self.__dict__["__file"] = open(name, 'rb')
         self.__dict__["__validation_functions"] = validation_functions
+
+    def close(self):
+        return self.__dict__['__file'].close()
 
     def readline(self):
         line = self.__dict__['__file'].readline().rstrip(b"\r\n")
         for validation_func in self.__dict__['__validation_functions']:
-            line = validation_func(line)
-        return line + "\n"
+            line = validation_func(line, self.__dict__['__file'])
+        return line + b"\n"
 
     def readlines(self):
         def yielder():

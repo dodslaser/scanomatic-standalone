@@ -10,7 +10,7 @@ import scanomatic.io.app_config as app_config
 import scanomatic.io.fixtures as fixtures
 import scanomatic.io.paths as paths
 from scanomatic.generics.singleton import SingeltonOneInit
-from scanomatic.io.jsonizer import dump, load
+from scanomatic.io import jsonizer
 from scanomatic.io.logger import get_logger
 from scanomatic.io.power_manager import InvalidInit, PowerManagerNull
 from scanomatic.io.sane import get_alive_scanners
@@ -72,7 +72,7 @@ class ScannerPowerManager(SingeltonOneInit):
         scanners: dict[int, ScannerModel] = {}
 
         # Load saved scanner data
-        scanner_configs = load(self._paths.config_scanners)
+        scanner_configs = jsonizer.load(self._paths.config_scanners)
         if scanner_configs is None:
             scanner_configs = []
         elif not isinstance(scanner_configs, list):
@@ -124,7 +124,7 @@ class ScannerPowerManager(SingeltonOneInit):
         return pm
 
     def _save(self, scanner_model) -> None:
-        dump(
+        jsonizer.dump(
             scanner_model,
             self._paths.config_scanners,
         )

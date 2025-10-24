@@ -1,16 +1,15 @@
 import os
+from collections.abc import Sequence
 from enum import Enum
 from glob import glob
 from typing import Optional, cast
-from collections.abc import Sequence
-from scanomatic.io.jsonizer import copy, dump, dump_to_stream, load, load_first
-from scanomatic.io.logger import get_logger
 
+from scanomatic.io import jsonizer, legacy
+from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
-from scanomatic.models.compile_project_model import (
-    CompileImageAnalysisModel,
-    CompileInstructionsModel
-)
+from scanomatic.models.compile_project_model import CompileImageAnalysisModel, CompileInstructionsModel
+from scanomatic.models.factories.compile_project_factory import CompileImageAnalysisFactory, CompileProjectFactory
+from scanomatic.models.factories.scanning_factory import ScanningModelFactory
 from scanomatic.models.scanning_model import ScanningModel
 from scanomatic.models.validators.validate import validate
 
@@ -60,15 +59,15 @@ class CompilationResults:
         new._compilation_path = path
         new._compile_instructions = cast(
             CompileInstructionsModel,
-            copy(compile_instructions),
+            jsonizer.copy(compile_instructions),
         )
         new._image_models = cast(
             list[CompileImageAnalysisModel],
-            copy(list(image_models)),
+            jsonizer.copy(list(image_models)),
         )
         new._used_models = cast(
             list[CompileImageAnalysisModel],
-            copy(list(used_models)),
+            jsonizer.copy(list(used_models)),
         )
         new._loading_length = len(new._image_models)
         new._scanner_instructions = scan_instructions
@@ -87,10 +86,10 @@ class CompilationResults:
                 )
                 return
 
-        self._scanner_instructions = load_first(path)
+        self._scanner_instructions = jsonizer.load_first(path) or legacy.load_first(path, ScanningModelFactory)
 
     def _load_compile_instructions(self, path: str):
-        self._compile_instructions = load_first(path)
+        self._compile_instructions = jsonizer.load_first(path) or legacy.load_first(path, CompileProjectFactory)
         if self._compile_instructions is None:
             self._logger.error(f"Could not load path {path}")
 
@@ -99,7 +98,7 @@ class CompilationResults:
         path: str,
         sort_mode: FIRST_PASS_SORTING = FIRST_PASS_SORTING.Time
     ):
-        images: Optional[list[CompileImageAnalysisModel]] = load(path)
+        images: Optional[list[CompileImageAnalysisModel]] = jsonizer.load(path) or legacy.load(path, CompileImageAnalysisFactory)
         if images is None:
             self._logger.error(f"Could not load any images from {path}")
             images = []
@@ -108,7 +107,7 @@ class CompilationResults:
 
         self._reindex_plates(images)
 
-        models = copy(images)
+        models = jsonizer.copy(images)
         if sort_mode is FIRST_PASS_SORTING.Time:
             for (index, m) in enumerate(sorted(
                 models,
@@ -164,7 +163,7 @@ class CompilationResults:
         other_image_models = []
         other_directory = os.path.dirname(other._compilation_path)
         for index in range(len(other)):
-            model: CompileImageAnalysisModel = copy(other[index])
+            model: CompileImageAnalysisModel = jsonizer.copy(other[index])
             model.image.time_stamp += start_time_difference
             model.image.index += other_start_index
             self._update_image_path_if_needed(model, other_directory)
@@ -271,14 +270,14 @@ class CompilationResults:
                 'w',
             ) as fh:
                 while True:
-                    model: CompileImageAnalysisModel = copy(
+                    model: CompileImageAnalysisModel = jsonizer.copy(
                         self.get_next_image_model(),
                     )
                     self._update_image_path_if_needed(model, directory)
                     if model is None:
                         break
                     if validate(model):
-                        dump_to_stream(model, fh)
+                        jsonizer.dump_to_stream(model, fh)
         except IOError:
             self._logger.error("Could not save to directory")
             return
@@ -287,7 +286,7 @@ class CompilationResults:
             directory,
             Paths().project_compilation_pattern.format(new_name),
         )
-        dump(
+        jsonizer.dump(
             self._compile_instructions,
             compile_instructions,
         )
@@ -304,7 +303,7 @@ class CompilationResults:
                 directory,
                 Paths().scan_project_file_pattern.format(new_name),
             )
-            dump(
+            jsonizer.dump(
                 self._scanner_instructions,
                 scan_instructions,
             )

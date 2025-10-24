@@ -8,7 +8,7 @@ import scanomatic.models.scanning_model as scanning_model
 from scanomatic.generics.abstract_model_factory import AbstractModelFactory
 from scanomatic.generics.model import Model
 from scanomatic.generics.singleton import SingeltonOneInit
-from scanomatic.io.jsonizer import copy, dump, load_first
+from scanomatic.io import jsonizer
 from scanomatic.io.logger import get_logger
 from scanomatic.models.factories.settings_factories import (
     ApplicationSettingsFactory
@@ -165,7 +165,7 @@ class Config(SingeltonOneInit):
         return self._settings
 
     def model_copy(self) -> ApplicationSettingsModel:
-        return copy(self._settings)
+        return jsonizer.copy(self._settings)
 
     def get_scanner_name(self, scanner: Union[int, str]) -> Optional[str]:
         if isinstance(scanner, int) and 0 < scanner <= self.number_of_scanners:
@@ -178,7 +178,7 @@ class Config(SingeltonOneInit):
 
     def reload_settings(self) -> None:
         if os.path.isfile(self._paths.config_main_app):
-            self._settings = load_first(self._paths.config_main_app)
+            self._settings = jsonizer.load_first(self._paths.config_main_app)
             if self._settings is None:
                 self._settings = ApplicationSettingsFactory.create()
         else:
@@ -250,7 +250,7 @@ class Config(SingeltonOneInit):
 
     def save_current_settings(self) -> None:
         """Settings should be validated beforehand."""
-        dump(
+        jsonizer.dump(
             self.application_settings,
             self._paths.config_main_app,
             merge=True,

@@ -1,18 +1,16 @@
 import os
-from typing import Optional, Union
 from collections.abc import Sequence
+from typing import Optional, Union
 
 import numpy as np
-from scanomatic.io.logger import get_logger
 
 import scanomatic.io.paths as paths
 from scanomatic.image_analysis.grayscale import get_grayscale
-from scanomatic.io.pickler import safe_load
+from scanomatic.io.logger import get_logger
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.models.analysis_model import IMAGE_ROTATIONS
 from scanomatic.models.compile_project_model import CompileImageAnalysisModel
-from scanomatic.models.factories.analysis_factories import (
-    AnalysisFeaturesFactory
-)
+from scanomatic.models.factories.analysis_factories import AnalysisFeaturesFactory
 
 from . import grid, image_basics
 from .grid_cell import GridCell
@@ -246,10 +244,7 @@ class GridArray:
                 )
 
         try:
-            grid = np.load(
-                safe_load(grid),
-                allow_pickle=True,
-            )
+            grid = resilient_numpy_load(grid)
         except IOError:
             self._LOGGER.error("No grid file named '{0}'".format(grid))
             self._LOGGER.info("Invoking grid detection instead")

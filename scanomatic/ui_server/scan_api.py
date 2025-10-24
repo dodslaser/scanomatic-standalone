@@ -3,17 +3,13 @@ from glob import glob
 from itertools import chain
 
 from flask import jsonify
-from scanomatic.io.jsonizer import load_first
 
 import scanomatic.io.sane as sane
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.paths import Paths
+from scanomatic.models.factories.scanning_factory import ScanningModelFactory
 from scanomatic.models.scanning_model import ScanningModel
-from scanomatic.ui_server.general import (
-    convert_path_to_url,
-    convert_url_to_path,
-    get_search_results,
-    json_response
-)
+from scanomatic.ui_server.general import convert_path_to_url, convert_url_to_path, get_search_results, json_response
 
 
 def add_routes(app):
@@ -30,7 +26,7 @@ def add_routes(app):
     def get_scan_instructions(project=None):
         base_url = "/api/scan/instructions"
         path = convert_url_to_path(project)
-        model: ScanningModel = load_first(path)
+        model: ScanningModel = jsonizer.load_first(path) or legacy.load_first(path, ScanningModelFactory)
 
         if model is None:
             compile_instructions = [

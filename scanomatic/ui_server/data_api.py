@@ -10,34 +10,26 @@ import numpy as np
 from flask import jsonify, request, send_from_directory
 
 from scanomatic.data_processing import phenotyper
-from scanomatic.data_processing.calibration import (
-    get_polynomial_coefficients_from_ccc
-)
+from scanomatic.data_processing.calibration import get_polynomial_coefficients_from_ccc
 from scanomatic.data_processing.norm import NormState
 from scanomatic.data_processing.project import path_has_saved_project_state
+from scanomatic.image_analysis.exceptions import GrayscaleError
 from scanomatic.image_analysis.first_pass_image import FixtureImage
-from scanomatic.image_analysis.grayscale import get_grayscale
-from scanomatic.image_analysis.grayscale import get_grayscale_names
-from scanomatic.image_analysis.grid_cell import GridCell
-from scanomatic.image_analysis.image_basics import Image_Transpose
+from scanomatic.image_analysis.grayscale import get_grayscale, get_grayscale_names
 from scanomatic.image_analysis.grayscale_detection import (
     detect_grayscale,
     get_grayscale_im_section,
 )
+from scanomatic.image_analysis.grid_cell import GridCell
+from scanomatic.image_analysis.image_basics import Image_Transpose
 from scanomatic.image_analysis.support import save_image_as_png
-from scanomatic.image_analysis.exceptions import GrayscaleError
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.fixtures import Fixtures
-from scanomatic.io.jsonizer import dump, load_first
 from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.models.analysis_model import COMPARTMENTS, VALUES
-from scanomatic.models.factories.analysis_factories import (
-    AnalysisFeaturesFactory
-)
-from scanomatic.models.factories.fixture_factories import (
-    FixtureFactory,
-    GrayScaleAreaModelFactory
-)
+from scanomatic.models.factories.analysis_factories import AnalysisFeaturesFactory
+from scanomatic.models.factories.fixture_factories import FixtureFactory, GrayScaleAreaModelFactory
 from scanomatic.models.fixture_models import GrayScaleAreaModel
 from scanomatic.models.validators.validate import validate
 
@@ -57,7 +49,7 @@ from .general import (
     split_areas_into_grayscale_and_plates,
     string_parse_2d_list,
     usable_markers,
-    usable_plates
+    usable_plates,
 )
 
 _logger = get_logger("Data API")
@@ -416,7 +408,7 @@ def add_routes(app, rpc_client, is_debug_mode):
             Paths().experiment_local_fixturename)
 
         try:
-            fixture = load_first(path)
+            fixture = jsonizer.load_first(path) or legacy.load_first(path, FixtureFactory)
             if fixture is None:
                 return jsonify(
                     success=False,
@@ -458,7 +450,7 @@ def add_routes(app, rpc_client, is_debug_mode):
         elif name in rpc_client.get_fixtures():
             path = Paths().get_fixture_path(name)
             try:
-                fixture = load_first(path)
+                fixture = jsonizer.load_first(path) or legacy.load_first(path, FixtureFactory)
                 if fixture is None:
                     return jsonify(
                         success=False,
@@ -631,7 +623,7 @@ def add_routes(app, rpc_client, is_debug_mode):
                 reason="Final compilation doesn't validate",
             )
 
-        dump(fixture_model, fixture_model.path)
+        jsonizer.dump(fixture_model, fixture_model.path)
         return jsonify(success=True)
 
     @app.route("/api/data/fixture/calculate/<fixture_name>", methods=['POST'])

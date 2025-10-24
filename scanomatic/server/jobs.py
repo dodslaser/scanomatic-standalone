@@ -9,8 +9,7 @@ import scanomatic.server.phenotype_effector as phenotype_effector
 import scanomatic.server.rpcjob as rpc_job
 import scanomatic.server.scanning_effector as scanning_effector
 from scanomatic.generics.singleton import SingeltonOneInit
-from scanomatic.io import scanner_manager
-from scanomatic.io.jsonizer import dump, dumps, load, purge
+from scanomatic.io import jsonizer, scanner_manager
 from scanomatic.io.logger import get_logger
 from scanomatic.models.factories.rpc_job_factory import RPC_Job_Model_Factory
 
@@ -65,7 +64,7 @@ class Jobs(SingeltonOneInit):
                 self._scanner_manager.release_scanner(job.id)
             del self._jobs[job]
             self._logger.info("Job '{0}' not active/removed".format(job))
-            if not purge(
+            if not jsonizer.purge(
                 job,
                 self._paths.rpc_jobs,
                 RPC_Job_Model_Factory.is_same_job,
@@ -123,7 +122,7 @@ class Jobs(SingeltonOneInit):
         self._forcingStop = value
 
     def _load_from_file(self):
-        jobs = load(self._paths.rpc_jobs)
+        jobs = jsonizer.load(self._paths.rpc_jobs)
         for job in cast(
             list[rpc_job_models.RPCjobModel],
             [] if jobs is None else jobs
@@ -233,7 +232,7 @@ class Jobs(SingeltonOneInit):
     ):
         self._jobs[job] = job_process
         job.status = rpc_job_models.JOB_STATUS.Running
-        dump([j for j in self._jobs], self._paths.rpc_jobs)
+        jsonizer.dump([j for j in self._jobs], self._paths.rpc_jobs)
 
     def _initialize_job_process(
         self,
@@ -249,7 +248,7 @@ class Jobs(SingeltonOneInit):
 
         job_process.pipe.send(
             'setup',
-            dumps(job),
+            jsonizer.dumps(job),
         )
 
     def _add_scanner_operations_to_job(self, job_process: rpc_job.RpcJob):

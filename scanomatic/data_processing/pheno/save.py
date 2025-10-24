@@ -8,7 +8,7 @@ from typing import Any, Optional
 import numpy as np
 
 import scanomatic.io.paths as paths
-import scanomatic.io.jsonizer as jsonizer
+from scanomatic.io import jsonizer
 from scanomatic.data_processing.pheno.state import (
     PhenotyperSettings,
     PhenotyperState

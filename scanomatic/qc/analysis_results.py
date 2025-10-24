@@ -4,6 +4,7 @@ import re
 
 import numpy as np
 from matplotlib import pyplot as plt  # type: ignore
+
 # This import is used in 3D plotting just not explicitly stupid matplotlib
 from mpl_toolkits.mplot3d import Axes3D  # type: ignore  # noqa: F401
 
@@ -12,8 +13,8 @@ from scanomatic.io.image_data import ImageData
 from scanomatic.io.image_loading import load_colony_images_for_animation
 from scanomatic.io.logger import get_logger
 from scanomatic.io.movie_writer import MovieWriter
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.io.paths import Paths
-from scanomatic.io.pickler import safe_load
 
 _pattern = re.compile(r".*_([0-9]+)_[0-9]+_[0-9]+_[0-9]+\..*")
 _logger = get_logger("Phenotype Results QC")
@@ -45,38 +46,14 @@ def calculate_growth_curve(data_paths, blob_paths, background_paths=None):
     if background_paths is not None:
         return np.array([
             (
-                np.load(
-                    safe_load(data),
-                    allow_pickle=True,
-                )
-                - mid50_mean(
-                    np.load(
-                        safe_load(data),
-                        allow_pickle=True,
-                    )[
-                        np.load(
-                            safe_load(bg),
-                            allow_pickle=True,
-                        )
-                    ]
-                )
-            )[np.load(
-                safe_load(blob),
-                allow_pickle=True,
-            )].sum()
+                resilient_numpy_load(data)
+                - mid50_mean(resilient_numpy_load(data)[resilient_numpy_load(bg)])
+            )[resilient_numpy_load(blob)].sum()
             for data, blob, bg in zip(data_paths, blob_paths, background_paths)
         ])
     else:
         return np.array([
-            np.load(
-                safe_load(data),
-                allow_pickle=True,
-            )[
-                np.load(
-                    safe_load(blob),
-                    allow_pickle=True,
-                )
-            ].sum()
+            resilient_numpy_load(data)[resilient_numpy_load(blob)].sum()
             for data, blob in zip(data_paths, blob_paths)
         ])
 
@@ -224,10 +201,7 @@ def animate_blob_detection(
 
     image_ax = fig.axes[0]
     ims = []
-    data = np.load(
-        safe_load(files[0]),
-        allow_pickle=True,
-    ).astype(np.float64)
+    data = resilient_numpy_load(files[0]).astype(np.float64)
     for i, ax in enumerate(fig.axes[:-1]):
         ims.append(ax.imshow(
             data,
@@ -240,10 +214,7 @@ def animate_blob_detection(
     def _plotter():
 
         for idx, index in enumerate(image_indices):
-            ims[0].set_data(np.load(
-                safe_load(files[idx]),
-                allow_pickle=True,
-            ))
+            ims[0].set_data(resilient_numpy_load(files[idx]))
             base_name = files[idx][:-21]
             image_ax.set_title(
                 "Image (t={0:.1f}h)".format(
@@ -258,15 +229,9 @@ def animate_blob_detection(
                 '.blob.trash.current.npy',
                 '.blob.trash.old.npy',
             )):
-                im_data = np.load(
-                    safe_load(base_name + ending),
-                    allow_pickle=True,
-                )
+                im_data = resilient_numpy_load(base_name + ending)
                 if im_data.ndim == 2:
-                    ims[j + 1].set_data(np.load(
-                        safe_load(base_name + ending),
-                        allow_pickle=True,
-                    ))
+                    ims[j + 1].set_data(im_data)
 
             set_axvspan_width(polygon, curve_times[idx])
             _square_ax(curve_ax)
@@ -303,10 +268,7 @@ def animate_3d_colony(
 
     image_ax, curve_ax = fig.axes
 
-    data = np.load(
-        safe_load(files[0]),
-        allow_pickle=True,
-    )
+    data = resilient_numpy_load(files[0])
     im = image_ax.imshow(data, interpolation='nearest', vmin=0, vmax=100)
 
     coords_x, coords_y = np.mgrid[0:data.shape[0], 0:data.shape[1]]
@@ -327,10 +289,7 @@ def animate_3d_colony(
         ax3d = None
 
         for idx, index in enumerate(image_indices):
-            im.set_data(np.load(
-                safe_load(files[idx]),
-                allow_pickle=True,
-            ))
+            im.set_data(resilient_numpy_load(files[idx]))
 
             # Added suffix length too
             base_name = files[idx][:-(10 + 11)]
@@ -342,10 +301,7 @@ def animate_3d_colony(
                 ),
             )
 
-            cells = np.load(
-                safe_load(base_name + ".image.cells.npy"),
-                allow_pickle=True,
-            )
+            cells = resilient_numpy_load(base_name + ".image.cells.npy")
             if cells.ndim != 2:
                 cells = np.zeros_like(coords_y)
             else:

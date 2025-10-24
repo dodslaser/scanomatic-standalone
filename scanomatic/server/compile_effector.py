@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Any, Optional, cast
-from scanomatic.io.jsonizer import dump, dump_to_stream, loads
+from scanomatic.io import jsonizer
 
 import scanomatic.io.rpc_client as rpc_client
 from scanomatic.image_analysis import first_pass
@@ -82,7 +82,7 @@ class CompileProjectEffector(proc_effector.ProcessEffector):
             CompileInstructionsModel,
             cast(
                 RPCjobModel,
-                loads(job),
+                jsonizer.loads(job),
             ).content_model,
         )
         self._job.content_model = self._compile_job
@@ -109,7 +109,7 @@ class CompileProjectEffector(proc_effector.ProcessEffector):
             except OSError:
                 pass
 
-            dump(
+            jsonizer.dump(
                 self._compile_job,
                 self._compile_instructions_path
             )
@@ -198,7 +198,7 @@ class CompileProjectEffector(proc_effector.ProcessEffector):
                         issues=issues,
                     )
                     if validate(image_model):
-                        dump_to_stream(
+                        jsonizer.dump_to_stream(
                             image_model,
                             fh,
                             as_if_appending=True,

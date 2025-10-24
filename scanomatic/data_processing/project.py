@@ -6,7 +6,7 @@ import numpy as np
 import scanomatic.io.paths as paths
 from scanomatic.io import jsonizer
 from scanomatic.io.logger import get_logger
-from scanomatic.io.pickler import safe_load
+from scanomatic.io.numpy import resilient_numpy_load
 
 _logger = get_logger("Project")
 
@@ -22,29 +22,15 @@ def path_has_saved_project_state(
 
     if require_phenotypes:
         try:
-            np.load(
-                safe_load(os.path.join(directory_path, _p.phenotypes_raw_npy)),
-                allow_pickle=True,
-            )
+            resilient_numpy_load(os.path.join(directory_path, _p.phenotypes_raw_npy), encoding="bytes")
         except IOError:
             return False
 
     try:
-        np.load(
-            safe_load(os.path.join(directory_path,  _p.phenotypes_input_data)),
-            allow_pickle=True,
-        )
-        np.load(
-            safe_load(os.path.join(directory_path, _p.phenotype_times)),
-            allow_pickle=True,
-        )
-        np.load(
-            safe_load(os.path.join(directory_path, _p.phenotypes_input_smooth)),
-            allow_pickle=True,
-        )
-        jsonizer.load(
-            os.path.join(directory_path, _p.phenotypes_extraction_params),
-        )
+        resilient_numpy_load(os.path.join(directory_path,  _p.phenotypes_input_data), encoding="bytes")
+        resilient_numpy_load(os.path.join(directory_path, _p.phenotype_times), encoding="bytes")
+        resilient_numpy_load(os.path.join(directory_path, _p.phenotypes_input_smooth), encoding="bytes")
+        jsonizer.load(os.path.join(directory_path, _p.phenotypes_extraction_params))
     except IOError:
         return False
     return True

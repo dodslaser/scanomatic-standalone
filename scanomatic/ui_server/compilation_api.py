@@ -5,19 +5,16 @@ from itertools import chain
 from flask import jsonify
 
 from scanomatic.data_processing.project import path_has_saved_project_state
-from scanomatic.io import image_loading
-from scanomatic.io.jsonizer import load_first
+from scanomatic.io import image_loading, jsonizer, legacy
 from scanomatic.io.paths import Paths
 from scanomatic.models.compile_project_model import CompileInstructionsModel
-from scanomatic.models.factories.compile_project_factory import (
-    CompileProjectFactory
-)
+from scanomatic.models.factories.compile_project_factory import CompileProjectFactory
 from scanomatic.ui_server.general import (
     convert_path_to_url,
     convert_url_to_path,
     get_search_results,
     json_response,
-    serve_numpy_as_image
+    serve_numpy_as_image,
 )
 
 
@@ -68,7 +65,7 @@ def add_routes(app):
     def get_compile_instructions(project=None):
         base_url = "/api/compile/instructions"
         path = convert_url_to_path(project)
-        model: CompileInstructionsModel = load_first(path)
+        model: CompileInstructionsModel = jsonizer.load_first(path) or legacy.load_first(path, CompileProjectFactory)
 
         if model is None:
             scan_instructions = [

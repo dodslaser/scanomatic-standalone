@@ -6,9 +6,10 @@ from collections.abc import Sequence
 import numpy as np
 from matplotlib import pyplot as plt  # type: ignore
 
-from scanomatic.io.jsonizer import load
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.movie_writer import MovieWriter
 from scanomatic.models.compile_project_model import CompileImageAnalysisModel
+from scanomatic.models.factories.compile_project_factory import CompileImageAnalysisFactory
 
 _img_pattern = re.compile(r".*_[0-9]{4}_[0-9.]+\.tiff$")
 _time_pattern = re.compile(r'[0-9]+\.[0-9]*')
@@ -19,7 +20,7 @@ def _input_validate(f):
         if len(args) > 0:
             if isinstance(args[0], str):
                 args = list(args)
-                args[0] = load(args[0])
+                args[0] = jsonizer.load(args[0]) or legacy.load(args[0], CompileImageAnalysisFactory)
         return f(*args, **kwargs)
 
     return wrapped

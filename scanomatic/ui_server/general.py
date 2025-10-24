@@ -15,20 +15,15 @@ from PIL import Image
 from werkzeug.datastructures import FileStorage
 
 from scanomatic.image_analysis.first_pass_image import FixtureImage
-from scanomatic.image_analysis.grayscale_detection import is_valid_grayscale
 from scanomatic.image_analysis.grayscale import Grayscale
+from scanomatic.image_analysis.grayscale_detection import is_valid_grayscale
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.app_config import Config
-from scanomatic.io.jsonizer import load_first
 from scanomatic.io.logger import get_logger, parse_log_file
 from scanomatic.io.paths import Paths
-from scanomatic.models.factories.fixture_factories import (
-    FixturePlateFactory,
-    GrayScaleAreaModelFactory
-)
-from scanomatic.models.fixture_models import (
-    FixturePlateModel,
-    GrayScaleAreaModel
-)
+from scanomatic.models.factories.fixture_factories import FixturePlateFactory, GrayScaleAreaModelFactory
+from scanomatic.models.factories.scanning_factory import ScanningModelFactory
+from scanomatic.models.fixture_models import FixturePlateModel, GrayScaleAreaModel
 
 _safe_dir = re.compile(
     r"^[A-Za-z_0-9.%/ \\]*$" if os.sep == "\\" else r"^[A-Za-z_0-9.%/ ]*$",
@@ -245,7 +240,7 @@ def get_project_name(project_path):
     )
     if candidates:
         for candidate in candidates:
-            model = load_first(candidate)
+            model = jsonizer.load_first(candidate) or legacy.load_first(candidate, ScanningModelFactory)
             if model:
                 return model.project_name if model.project_name else no_name
 

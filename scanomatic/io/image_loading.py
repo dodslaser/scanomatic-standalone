@@ -6,11 +6,12 @@ from typing import Optional
 import numpy as np
 
 from scanomatic.image_analysis.image_basics import load_image_to_numpy
-from scanomatic.io.jsonizer import load
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.logger import get_logger
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.io.paths import Paths
-from scanomatic.io.pickler import safe_load
 from scanomatic.models.compile_project_model import CompileImageAnalysisModel
+from scanomatic.models.factories.compile_project_factory import CompileImageAnalysisFactory
 
 _logger = get_logger("Image loader")
 
@@ -86,20 +87,8 @@ def slice_im(plate_im, colony_position, colony_size):
 
 def _load_grid_info(analysis_directory, plate):
     # grids number +1
-    grid = np.load(
-        safe_load(os.path.join(
-            analysis_directory,
-            Paths().grid_pattern.format(plate + 1),
-        )),
-        allow_pickle=True,
-    )
-    grid_size = np.load(
-        safe_load(os.path.join(
-            analysis_directory,
-            Paths().grid_size_pattern.format((plate + 1)),
-        )),
-        allow_pickle=True,
-    )
+    grid = resilient_numpy_load(os.path.join(analysis_directory, Paths().grid_pattern.format(plate + 1)))
+    grid_size = resilient_numpy_load(os.path.join(analysis_directory, Paths().grid_size_pattern.format((plate + 1))))
     return grid, grid_size
 
 
@@ -118,7 +107,10 @@ def load_colony_image(
             analysis_directory,
             file_name=compilation_file_name,
         )
-        compilation_result = load(compilation_file)[time_index]
+        compilation_result = (
+            jsonizer.load(compilation_file)
+            or legacy.load(compilation_file, CompileImageAnalysisFactory)
+        )[time_index]
         if not experiment_directory:
             experiment_directory = os.path.dirname(compilation_file)
 
@@ -189,13 +181,11 @@ def load_colony_images_for_animation(
 
     grid, grid_size = _load_grid_info(analysis_directory, position[0])
 
-    compilation_results: list[CompileImageAnalysisModel] = load(
-        project_compilation,
+    compilation_results: list[CompileImageAnalysisModel] = (
+        jsonizer.load(project_compilation)
+        or legacy.load(project_compilation, CompileImageAnalysisFactory)
     )
-    compilation_results = sorted(
-        compilation_results,
-        key=lambda e: e.image.index,
-    )
+    compilation_results = sorted(compilation_results, key=lambda e: e.image.index)
 
     times = np.array(tuple(
         entry.image.time_stamp for entry in compilation_results

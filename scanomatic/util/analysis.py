@@ -5,11 +5,12 @@ import numpy as np
 
 from scanomatic.generics.purge_importing import ExpiringModule
 from scanomatic.image_analysis.image_basics import load_image_to_numpy
-from scanomatic.io.jsonizer import load
+from scanomatic.io import jsonizer, legacy
 from scanomatic.io.logger import get_logger
+from scanomatic.io.numpy import resilient_numpy_load
 from scanomatic.io.paths import Paths
-from scanomatic.io.pickler import safe_load
 from scanomatic.models.compile_project_model import CompileImageAnalysisModel
+from scanomatic.models.factories.compile_project_factory import CompileImageAnalysisFactory
 
 _logger = get_logger("Analysis Utils")
 
@@ -60,7 +61,7 @@ def produce_grid_images(
         )
     )
 
-    compilation_list: list[CompileImageAnalysisModel] = load(compilation)
+    compilation_list: list[CompileImageAnalysisModel] = jsonizer.load(compilation) or legacy.load(compilation, CompileImageAnalysisFactory)
 
     image_path = compilation_list[-1].image.path
     all_plates = compilation_list[-1].fixture.plates
@@ -95,10 +96,7 @@ def produce_grid_images(
         grid_path = os.path.join(
             path, Paths().grid_pattern.format(plate.index))
         try:
-            grid = np.load(
-                safe_load(grid_path),
-                allow_pickle=True,
-            )
+            grid = resilient_numpy_load(grid_path)
         except IOError:
             _logger.warning("Could not find any grid: " + grid_path)
             grid = None

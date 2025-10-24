@@ -4,7 +4,7 @@
     "test:watch": "vitest",
     "build:som": "LIB_NAME=som vite build",
     "build:ccc": "LIB_NAME=ccc vite build",
-    "lint": "eslint --ext mjs,jsx,js scanomatic/ui_server_data/js/ccc scanomatic/ui_server_data/js/tests"
+    "lint": "eslint --ext mjs,jsx,js scanomatic/data/js/ccc scanomatic/data/js/tests"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.4",

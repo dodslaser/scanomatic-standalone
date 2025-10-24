@@ -3,7 +3,7 @@ WORKDIR /src
 COPY package.json bun.lock /src/
 RUN bun ci
 COPY vite.config.js /src/
-COPY scanomatic/ui_server_data /src/scanomatic/ui_server_data
+COPY scanomatic/data/js /src/scanomatic/data/js
 RUN bun run build:som
 RUN bun run build:ccc
 
@@ -44,7 +44,7 @@ RUN echo "usb 0x4b8 0x151" >> /etc/sane.d/epson2.conf
 # Copy default scan-o-matic config
 # COPY data/config /root/.scan-o-matic/config/
 COPY --from=pybuilder /app /app
-COPY --from=jsbuilder /src/scanomatic/ui_server_data/js/somlib /app/scanomatic/ui_server_data/js/somlib
+COPY --from=jsbuilder /src/scanomatic/data/js/somlib/*.js /app/scanomatic/data/js/somlib/
 ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 5000
 WORKDIR /app

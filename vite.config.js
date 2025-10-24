@@ -4,15 +4,15 @@ import { replacePlugin } from 'rolldown/experimental';
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js'
 
 const libPaths = {
-  ccc: path.resolve(__dirname, 'scanomatic/ui_server_data/js/ccc/'),
-  som: path.resolve(__dirname, 'scanomatic/ui_server_data/js/som/'),
+  ccc: path.resolve(__dirname, 'scanomatic/data/js/ccc/'),
+  som: path.resolve(__dirname, 'scanomatic/data/js/som/'),
 }
 const libName = process.env.LIB_NAME || 'som'
 
 export default defineConfig({
   mode: 'production',
   build: {
-    outDir: 'scanomatic/ui_server_data/js/somlib',
+    outDir: 'scanomatic/data/js/somlib',
     assetsDir: '',
     emptyOutDir: false,
     manifest: false,

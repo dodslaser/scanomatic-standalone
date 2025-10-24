@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.9
 """Part of analysis work-flow that holds a grid arrays"""
 
-import os
 
 from . import (
     data_processing,
@@ -10,10 +9,10 @@ from . import (
     io,
     models,
     qc,
+    scripts,
     server,
     ui_server,
     util,
-    scripts,
 )
 
 __author__ = "Martin Zackrisson"
@@ -45,7 +44,3 @@ def get_version() -> str:
 
 def get_branch() -> str:
     return __branch
-
-
-def get_location() -> str:
-    return os.path.dirname(__file__)

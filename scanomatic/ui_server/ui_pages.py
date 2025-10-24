@@ -21,7 +21,7 @@ def add_routes(app):
 
     @app.route("/")
     def _root():
-        return render_template(Paths().ui_root_file, debug=app.debug)
+        return render_template(Paths().ui_root_template, debug=app.debug)
 
     @app.route("/home")
     def _show_homescreen():
@@ -29,11 +29,11 @@ def add_routes(app):
 
     @app.route("/ccc")
     def _ccc():
-        return send_from_directory(Paths().ui_root, Paths().ui_ccc_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_ccc_file)
 
     @app.route("/maintain")
     def _maintain():
-        return send_from_directory(Paths().ui_root, Paths().ui_maintain_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_maintain_file)
 
     @app.route("/settings")
     def _settings():
@@ -46,19 +46,19 @@ def add_routes(app):
 
     @app.route("/fixtures")
     def _fixtures():
-        return send_from_directory(Paths().ui_root, Paths().ui_fixture_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_fixture_file)
 
     @app.route("/status")
     def _status():
-        return send_from_directory(Paths().ui_root, Paths().ui_status_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_status_file)
 
     @app.route("/qc_norm")
     def _qc_norm():
-        return send_from_directory(Paths().ui_root, Paths().ui_qc_norm_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_qc_norm_file)
 
     @app.route("/help")
     def _help():
-        return send_from_directory(Paths().ui_root, Paths().ui_help_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_help_file)
 
     @app.route("/wiki")
     def _wiki():
@@ -67,22 +67,22 @@ def add_routes(app):
     @app.route("/feature_extract", methods=['get'])
     def _feature_extract():
         return send_from_directory(
-            Paths().ui_root, Paths().ui_feature_extract_file,
+            Paths().ui_html, Paths().ui_feature_extract_file,
         )
 
     @app.route("/analysis", methods=['get'])
     def _analysis():
-        return send_from_directory(Paths().ui_root, Paths().ui_analysis_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_analysis_file)
 
     @app.route("/experiment", methods=['get'])
     def _experiment():
         return send_from_directory(
-            Paths().ui_root, Paths().ui_experiment_file,
+            Paths().ui_html, Paths().ui_experiment_file,
         )
 
     @app.route("/compile", methods=['get'])
     def _compile():
-        return send_from_directory(Paths().ui_root, Paths().ui_compile_file)
+        return send_from_directory(Paths().ui_html, Paths().ui_compile_file)
 
     @app.route("/logs/system/<log>")
     def _logs(log: str):

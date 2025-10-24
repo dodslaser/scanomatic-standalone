@@ -1,7 +1,7 @@
-import { shallow } from 'enzyme';
 import React from 'react';
+import { render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
-import './enzyme-setup';
 import FinalizedCCC from '../../ccc/components/FinalizedCCC';
 import cccMetadata from '../fixtures/cccMetadata';
 
@@ -9,20 +9,19 @@ describe('<FinalizedCCC />', () => {
   const props = { cccMetadata };
 
   it('should say "Well Done!"', () => {
-    const wrapper = shallow(<FinalizedCCC {...props} />);
-    expect(wrapper.text()).toContain('Well Done!');
+    render(<FinalizedCCC {...props} />);
+    expect(screen.getByText(/Well Done!/)).toBeInTheDocument();
   });
 
   it('should show the calibration as string', () => {
-    const wrapper = shallow(<FinalizedCCC {...props} />);
-    expect(wrapper.text()).toContain('S. Kombuchae, Professor X');
+    render(<FinalizedCCC {...props} />);
+    expect(screen.getByText(/S\. Kombuchae, Professor X/)).toBeInTheDocument();
   });
 
   it('should show a button to go to the home page', () => {
-    const wrapper = shallow(<FinalizedCCC {...props} />);
-    const btnWrapper = wrapper.find('a.btn');
-    expect(btnWrapper.exists()).toBeTruthy();
-    expect(btnWrapper.text()).toContain('Go to home page');
-    expect(btnWrapper.prop('href')).toEqual('/');
+    render(<FinalizedCCC {...props} />);
+    expect(screen.getByRole('link', { name: /go to home page/i }))
+      .toBeInTheDocument()
+      .toHaveAttribute('href', '/');
   });
 });

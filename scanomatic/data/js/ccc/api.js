@@ -159,7 +159,7 @@ export function SetColonyDetection(
 
   const formData = new FormData();
   formData.append('access_token', accessToken);
-  $.ajax({
+  return $.ajax({
     url: path,
     type: 'POST',
     contentType: false,
@@ -192,7 +192,7 @@ export function SetColonyCompression(
     background: colony.background,
     cell_count: cellCount,
   };
-  $.ajax({
+  return $.ajax({
     url: path,
     method: 'POST',
     data: JSON.stringify(data),

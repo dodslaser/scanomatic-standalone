@@ -11,7 +11,7 @@ const SCALE = 0.2;
 
 export function drawCircle(canvas, x, y, radius, lineWidth = 1, strokeStyle = 'black') {
   const context = canvas.getContext('2d');
-  context.beginPath();
+  context.beginPath(x, y, radius);
   context.strokeStyle = strokeStyle;
   context.lineWidth = lineWidth;
   context.arc(x, y, radius, 0, 2 * Math.PI);

@@ -1,42 +1,45 @@
-import { shallow } from 'enzyme';
 import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
-import './enzyme-setup';
 import ImageUpload from '../../ccc/components/ImageUpload';
 
 describe('<ImageUpload />', () => {
-  const onImageChange = jasmine.createSpy('onFileChange');
+  const onImageChange = vi.fn();
   const props = { onImageChange };
 
   it('should render a file <input />', () => {
-    const wrapper = shallow(<ImageUpload {...props} />);
-    expect(wrapper.find('input[type="file"]').exists()).toBeTruthy();
+    const {container} = render(<ImageUpload {...props} />);
+    const input = container.querySelector('input[type="file"]');
+    expect(input).toBeInTheDocument();
   });
 
   it('should call onFileChange when a file is selected', () => {
     const file = 'my-image.tiff';
-    const wrapper = shallow(<ImageUpload {...props} />);
-    wrapper.find('input[type="file"]')
-      .simulate('change', { target: { files: [file] } });
+    const {container} = render(<ImageUpload {...props} />);
+    const input = container.querySelector('input[type="file"]');
+    fireEvent.change(input, { target: { files: [file] } });
     expect(onImageChange).toHaveBeenCalledWith(file);
   });
 
   const progress = { now: 1, max: 2, text: 'Making progress' };
 
   it('should hide the file input if progress is not null', () => {
-    const wrapper = shallow(<ImageUpload {...props} progress={progress} />);
-    expect(wrapper.find('input[type="file"]').exists()).toBeFalsy();
+    const {container} = render(<ImageUpload {...props} progress={progress} />);
+    const input = container.querySelector('input[type="file"]');
+    expect(input).not.toBeInTheDocument();
   });
 
   it('should show the progress text', () => {
-    const wrapper = shallow(<ImageUpload {...props} progress={progress} />);
-    expect(wrapper.text()).toContain('Making progress');
+    render(<ImageUpload {...props} progress={progress} />);
+    const progressText = screen.getByText(/Making progress/);
+    expect(progressText).toBeInTheDocument();
   });
 
   it('should show a progress bar if progress is not null', () => {
-    const wrapper = shallow(<ImageUpload {...props} progress={progress} />);
-    const progressBar = wrapper.find('.progress-bar');
-    expect(progressBar.exists()).toBeTruthy();
-    expect(progressBar.prop('style').width).toEqual('50%');
+    const {container} = render(<ImageUpload {...props} progress={progress} />);
+    const progressBar = container.querySelector('.progress-bar');
+    expect(progressBar).toBeInTheDocument();
+    expect(progressBar).toHaveStyle({ width: '50%' });
   });
 });

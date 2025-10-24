@@ -1,15 +1,16 @@
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import './enzyme-setup';
 import CCCInitialization from '../../ccc/components/CCCInitialization';
 
+import { render, screen, fireEvent } from '@testing-library/react'
+import '@testing-library/jest-dom'
+
 describe('<CCCInitialization />', () => {
-  const onSpeciesChange = jasmine.createSpy('onSpeciesChange');
-  const onReferenceChange = jasmine.createSpy('onReferenceChange');
-  const onFixtureNameChange = jasmine.createSpy('onFixtureNameChange');
-  const onPinningFormatNameChange = jasmine.createSpy('onPinningFormatNameChange');
-  const onSubmit = jasmine.createSpy('onSubmit');
+  const onSpeciesChange = vi.fn();
+  const onReferenceChange = vi.fn();
+  const onFixtureNameChange = vi.fn();
+  const onPinningFormatNameChange = vi.fn();
+  const onSubmit = vi.fn();
   const props = {
     species: 'S. Kombuchae',
     reference: 'Professor X',
@@ -25,69 +26,71 @@ describe('<CCCInitialization />', () => {
   };
 
   it('should render an <input /> for the species', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('input.species');
-    expect(input.exists()).toBeTruthy();
-    expect(input.prop('value')).toEqual(props.species);
+    render(<CCCInitialization {...props} />);
+    expect(screen.queryByPlaceholderText('species'))
+      .toBeInTheDocument()
+      .toHaveValue(props.species);
   });
 
   it('should call onSpeciesChange when the species input changes', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('input.species');
-    const event = { target: { value: 'XXX' } };
-    input.simulate('change', event);
-    expect(onSpeciesChange).toHaveBeenCalledWith(event);
+    const {container} = render(<CCCInitialization {...props} />);
+    const input = container.querySelector('input.species');
+    fireEvent.change(input, { target: { value: 'XXX' } });
+    expect(onSpeciesChange).toHaveBeenCalled();
   });
 
   it('should render an <input /> for the reference', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('input.reference');
-    expect(input.exists()).toBeTruthy();
-    expect(input.prop('value')).toEqual(props.reference);
+    const {container} = render(<CCCInitialization {...props} />);
+    expect(container.querySelector('input.reference'))
+      .toBeInTheDocument()
+      .toHaveValue(props.reference);
   });
 
   it('should call onReferenceChange when the reference changes', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('input.reference');
-    const event = { target: { value: 'XXX' } };
-    input.simulate('change', event);
-    expect(onReferenceChange).toHaveBeenCalledWith(event);
+    const {container} = render(<CCCInitialization {...props} />);
+    const input = container.querySelector('input.reference');
+    fireEvent.change(input, { target: { value: 'XXX' } });
+    expect(onReferenceChange).toHaveBeenCalled();
   });
 
   it('should render a <select /> for the fixtures', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('select.fixtures');
-    expect(input.exists()).toBeTruthy();
-    expect(input.prop('value')).toEqual(props.fixtureName);
-    expect(input.find('option').at(0).text()).toEqual('fix0');
-    expect(input.find('option').at(0).prop('value')).toEqual('fix0');
-    expect(input.find('option').at(1).text()).toEqual('fix1');
-    expect(input.find('option').at(1).prop('value')).toEqual('fix1');
+    const {container} = render (<CCCInitialization {...props} />);
+    const input = container.querySelector('select.fixtures');
+    expect(input).toBeInTheDocument()
+      .toHaveValue('fix1')
+      .toHaveLength(2);
+    expect(input.children[0]).toHaveTextContent('fix0')
+      .toHaveValue('fix0')
+    expect(input.children[1]).toHaveTextContent('fix1')
+      .toHaveValue('fix1')
   });
 
   it('should call onFixtureChange when the selected fixture changes', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('select.fixtures');
-    const event = { target: { value: 'XXX' } };
-    input.simulate('change', event);
-    expect(onFixtureNameChange).toHaveBeenCalledWith(event);
+    const {container} = render(<CCCInitialization {...props} />);
+    const input = container.querySelector('select.fixtures');
+    fireEvent.change(input, { target: { value: 'XXX' } });
+    expect(onFixtureNameChange).toHaveBeenCalled();
   });
 
   it('should render a <select /> for the pinning formats', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('select.pinningformats');
-    expect(input.exists()).toBeTruthy();
-    expect(input.find('option').at(0).text()).toEqual('1x1');
-    expect(input.find('option').at(0).prop('value')).toEqual('1x1');
-    expect(input.find('option').at(1).text()).toEqual('2x4');
-    expect(input.find('option').at(1).prop('value')).toEqual('2x4');
+    const {container} = render(<CCCInitialization {...props} />);
+    const input = container.querySelector('select.pinningformats');
+    expect(input)
+      .toBeInTheDocument()
+      .toHaveValue('2x4')
+      .toHaveLength(2);
+    expect(input.children[0])
+      .toHaveTextContent('1x1')
+      .toHaveValue('1x1')
+    expect(input.children[1])
+      .toHaveTextContent('2x4')
+      .toHaveValue('2x4')
   });
 
   it('should call onPinningFormatNameChange when the selected pinning format changes', () => {
-    const wrapper = shallow(<CCCInitialization {...props} />);
-    const input = wrapper.find('select.pinningformats');
-    const event = { target: { value: 'XXX' } };
-    input.simulate('change', event);
-    expect(onPinningFormatNameChange).toHaveBeenCalledWith(event);
+    const {container} = render(<CCCInitialization {...props} />);
+    const input = container.querySelector('select.pinningformats');
+    fireEvent.change(input, { target: { value: 'XXX' } });
+    expect(onPinningFormatNameChange).toHaveBeenCalled();
   });
 });

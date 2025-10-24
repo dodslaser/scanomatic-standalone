@@ -1,7 +1,8 @@
 import React from 'react';
-import { shallow } from 'enzyme';
 
-import './enzyme-setup';
+import { render } from '@testing-library/react';
+import '@testing-library/jest-dom'
+
 import PlateProgress from '../../ccc/components/PlateProgress';
 
 describe('<PlateProgress />', () => {
@@ -11,26 +12,23 @@ describe('<PlateProgress />', () => {
   };
 
   it('should render a bootstrap progress bar', () => {
-    const wrapper = shallow(<PlateProgress {...props} />);
-    expect(wrapper.find('div.progress').exists()).toBeTruthy();
-    expect(wrapper.find('div.progress').find('div.progress-bar').exists())
-      .toBeTruthy();
+    const { container } = render(<PlateProgress {...props} />);
+    expect(container.querySelector('div.progress')).toBeInTheDocument()
+    expect(container.querySelector('div.progress').querySelector('div.progress-bar')).toBeInTheDocument();
   });
 
   it('should set the progress bar width according to the props', () => {
-    const wrapper = shallow(<PlateProgress {...props} />);
-    expect(wrapper.find('div.progress-bar').prop('style').width)
-      .toEqual('17%');
+    const { container } = render(<PlateProgress {...props} />);
+    expect(container.querySelector('div.progress-bar')).toHaveStyle({ width: '17%' });
   });
 
   it('should set the bar text according to the props', () => {
-    const wrapper = shallow(<PlateProgress {...props} />);
-    expect(wrapper.find('div.progress-bar').text()).toEqual('7/42');
+    const { container } = render(<PlateProgress {...props} />);
+    expect(container.querySelector('div.progress-bar')).toHaveTextContent('7/42');
   });
 
   it('should give the progress bar a min-width so that the text is shown', () => {
-    const wrapper = shallow(<PlateProgress {...props} />);
-    expect(wrapper.find('div.progress-bar').prop('style').minWidth)
-      .toEqual('3em');
+    const { container } = render(<PlateProgress {...props} />);
+    expect(container.querySelector('div.progress-bar')).toHaveStyle({ minWidth: '3em' });
   });
 });

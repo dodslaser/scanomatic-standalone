@@ -1,45 +1,47 @@
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import './enzyme-setup';
 import CCCInfoBox from '../../ccc/components/CCCInfoBox';
+
+import { render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom'
+
 import cccMetadata from '../fixtures/cccMetadata';
 
 describe('<CCCInfoBox />', () => {
   const props = { cccMetadata };
 
   it('should render a <table />', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.find('table').exists()).toBeTruthy();
+    render(<CCCInfoBox {...props} />);
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
   it('should show the CCC id', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.id);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.id);
   });
 
   it('should show the CCC access token', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.accessToken);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.accessToken);
   });
 
   it('should show the CCC species', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.species);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.species);
   });
 
   it('should show the CCC reference', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.reference);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.reference);
   });
 
   it('should show the CCC pinning format', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.pinningFormat.name);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.pinningFormat.name);
   });
 
   it('should show the CCC fixture name', () => {
-    const wrapper = shallow(<CCCInfoBox {...props} />);
-    expect(wrapper.text()).toContain(cccMetadata.fixtureName);
+    const {container} = render(<CCCInfoBox {...props} />);
+    expect(container).toHaveTextContent(cccMetadata.fixtureName);
   });
 });

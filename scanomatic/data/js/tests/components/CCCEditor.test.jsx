@@ -1,14 +1,33 @@
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import './enzyme-setup';
 import CCCEditor from '../../ccc/components/CCCEditor';
+import CCCInfoBox from '../../ccc/components/CCCInfoBox';
+import PolynomialConstructionContainer from '../../ccc/containers/PolynomialConstructionContainer';
+import ImageUploadContainer from '../../ccc/containers/ImageUploadContainer';
+import PlateEditorContainer from '../../ccc/containers/PlateEditorContainer';
+
 import cccMetadata from '../fixtures/cccMetadata';
 
+import { render } from '@testing-library/react';
+import { ajaxMock } from '../helpers/AjaxMock';
+
+import $ from 'jquery'
+vi.stubGlobal('$', $);
+vi.stubGlobal('jQuery', $);
+
+// Mock c3 as SVG does not work in JSDOM
+vi.mock('c3', () => ({}));
+
+vi.mock('../../ccc/components/CCCInfoBox', {spy: true});
+vi.mock('../../ccc/containers/PolynomialConstructionContainer');
+vi.mock('../../ccc/containers/ImageUploadContainer');
+vi.mock('../../ccc/containers/PlateEditorContainer');
+
+
 describe('<CCCEditor />', () => {
-  const onFinalizeCCC = jasmine.createSpy('onFinalizeCCC');
-  const onFinishPlate = jasmine.createSpy('onFinishPlate');
-  const onFinishUpload = jasmine.createSpy('onFinishUpload');
+  const onFinalizeCCC = vi.fn();
+  const onFinishPlate = vi.fn();
+  const onFinishUpload = vi.fn();
   const props = {
     cccMetadata,
     plates: [
@@ -22,99 +41,103 @@ describe('<CCCEditor />', () => {
     onFinishUpload,
   };
 
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  new ajaxMock({url: '/api/calibration/*/image/*/plate/*/transform'});
+  new ajaxMock({url: '/api/calibration/*/image/*/plate/*/grid/set'});
+
   it('should render a <CCCInfoBox />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('CCCInfoBox').exists()).toBeTruthy();
+    render(<CCCEditor {...props} />);
+    expect(CCCInfoBox).toHaveBeenCalled();
   });
 
   it('should pass cccMetadata to <CCCInfoBox />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('CCCInfoBox').prop('cccMetadata')).toEqual(cccMetadata);
+    render(<CCCEditor {...props} />);
+    expect(CCCInfoBox).toHaveBeenCalledWith(
+      expect.objectContaining({ cccMetadata: cccMetadata }), expect.anything()
+    );
   });
 
   it('should render an <PolynomialConstructionContainer/>', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PolynomialConstructionContainer').exists())
-      .toBeTruthy();
+    render(<CCCEditor {...props} />);
+    expect(PolynomialConstructionContainer).toHaveBeenCalled();
   });
 
   it('should pass cccMetadata to <PolynomialConstructionContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PolynomialConstructionContainer').prop('cccMetadata'))
-      .toEqual(cccMetadata);
+    render(<CCCEditor {...props} />);
+    expect(PolynomialConstructionContainer).toHaveBeenCalledWith(
+      expect.objectContaining({ cccMetadata: cccMetadata }), expect.anything()
+    );
   });
 
   it('should pass onFinalizeCCC to <PolynomialConstructionContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PolynomialConstructionContainer').prop('onFinalizeCCC'))
-      .toBe(onFinalizeCCC);
+    render(<CCCEditor {...props} />);
+    expect(PolynomialConstructionContainer).toHaveBeenCalledWith(
+      expect.objectContaining({ onFinalizeCCC: onFinalizeCCC }), expect.anything()
+    );
   });
 
   describe('when currentImage is null', () => {
     it('should render an <ImageUploadContainer />', () => {
-      const wrapper = shallow(<CCCEditor {...props} />);
-      expect(wrapper.find('ImageUploadContainer').exists()).toBeTruthy();
+      render(<CCCEditor {...props} />);
+      expect(ImageUploadContainer).toHaveBeenCalled();
     });
 
     it('should pass cccMetadata to <ImageUploadContainer />', () => {
-      const wrapper = shallow(<CCCEditor {...props} />);
-      expect(wrapper.find('ImageUploadContainer').prop('cccMetadata'))
-        .toEqual(cccMetadata);
+      render(<CCCEditor {...props} />);
+      expect(ImageUploadContainer).toHaveBeenCalledWith(
+        expect.objectContaining({ cccMetadata: cccMetadata }), expect.anything()
+      );
     });
 
     it('should call onFinishUpload when <ImageUploadContainer /> calls onFinish', () => {
-      const wrapper = shallow(<CCCEditor {...props} />);
-      wrapper.find('ImageUploadContainer').prop('onFinish')();
+      render(<CCCEditor {...props} />);
+      ImageUploadContainer.mock.instances[0].props.onFinish();
       expect(onFinishUpload).toHaveBeenCalled();
     });
   });
 
   it('should render a <PlateEditorContainer /> per plate', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').length).toEqual(3);
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer).toHaveBeenCalledTimes(3);
   });
 
   it('should pass cccMetadata to <PlateEditorContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(0).prop('cccMetadata'))
-      .toEqual(cccMetadata);
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[0]).toHaveProperty('props.cccMetadata', cccMetadata);
   });
 
   it('should pass the plate imageId to <PlateEditorContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(0).prop('imageId'))
-      .toEqual(props.plates[0].imageId);
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[0]).toHaveProperty('props.imageId', props.plates[0].imageId);
   });
 
   it('should pass the plate imageName to <PlateEditorContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(0).prop('imageName'))
-      .toEqual(props.plates[0].imageName);
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[0]).toHaveProperty('props.imageName', props.plates[0].imageName);
   });
 
   it('should pass the plate plateId to <PlateEditorContainer />', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(0).prop('plateId'))
-      .toEqual(props.plates[0].plateId);
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[0]).toHaveProperty('props.plateId', props.plates[0].plateId);
   });
 
   it('should pass collapse=false to <PlateEditorContainer /> for current plate', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(1).prop('collapse'))
-      .toBeFalsy();
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[1]).toHaveProperty('props.collapse', false);
   });
 
   it('should pass collapse=true to <PlateEditorContainer /> otherwise', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    expect(wrapper.find('PlateEditorContainer').at(0).prop('collapse'))
-      .toBeTruthy();
-    expect(wrapper.find('PlateEditorContainer').at(2).prop('collapse'))
-      .toBeTruthy();
+    render(<CCCEditor {...props} />);
+    expect(PlateEditorContainer.mock.instances[0]).toHaveProperty('props.collapse', true);
+    expect(PlateEditorContainer.mock.instances[2]).toHaveProperty('props.collapse', true);
   });
 
   it('should call onFinishPlate when <PlateEditorContainer /> calls onFinish', () => {
-    const wrapper = shallow(<CCCEditor {...props} />);
-    wrapper.find('PlateEditorContainer').at(1).prop('onFinish')();
+    render (<CCCEditor {...props} />);
+    PlateEditorContainer.mock.instances[1].props.onFinish();
     expect(onFinishPlate).toHaveBeenCalled();
   });
 });

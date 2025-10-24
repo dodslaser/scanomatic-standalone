@@ -1,43 +1,48 @@
 import React from 'react';
-import { shallow } from 'enzyme';
 
-import './enzyme-setup';
+import { render, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom'
+
 import PolynomialConstructionError from '../../ccc/components/PolynomialConstructionError';
 
 describe('<PolynomialConstructionError />', () => {
+  const error = 'awesomesauce!';
+  const onClearError = vi.fn();
+
   const props = {
-    error: 'awesomesauce!',
-    onClearError: jasmine.createSpy('onClearError'),
+    error,
+    onClearError,
   };
 
   beforeEach(() => {
-    props.onClearError.calls.reset();
+    vi.clearAllMocks();
   });
 
   it('renders an alert', () => {
-    const wrapper = shallow(<PolynomialConstructionError {...props} />);
-    expect(wrapper.find('div.alert').exists()).toBeTruthy();
+    const { container } = render(<PolynomialConstructionError {...props} />);
+    expect(container.querySelector('div.alert')).toBeInTheDocument();
   });
 
   it('doesnt render any results', () => {
-    const wrapper = shallow(<PolynomialConstructionError {...props} />);
-    expect(wrapper.find('div.results').exists()).not.toBeTruthy();
+    const { container } = render(<PolynomialConstructionError {...props} />);
+    expect(container.querySelector('div.results')).not.toBeInTheDocument();
   });
 
   it('the alert displays the error', () => {
-    const wrapper = shallow(<PolynomialConstructionError {...props} />);
-    expect(wrapper.find('div.alert').text()).toContain(props.error);
+    const { container } = render(<PolynomialConstructionError {...props} />);
+    expect(container.querySelector('div.alert').textContent).toContain(props.error);
   });
 
   it('the alert has a close button', () => {
-    const wrapper = shallow(<PolynomialConstructionError {...props} />);
-    expect(wrapper.find('div.alert').find('button').exists())
-      .toBeTruthy();
+    const { container } = render(<PolynomialConstructionError {...props} />);
+    expect(container.querySelector('div.alert button')).toBeInTheDocument();
   });
 
   it('the alert has a close button invokes onClearError', () => {
-    const wrapper = shallow(<PolynomialConstructionError {...props} />);
-    wrapper.find('div.alert').find('button').simulate('click');
-    expect(props.onClearError).toHaveBeenCalled();
+    const { container } = render(<PolynomialConstructionError {...props} />);
+    const button = container.querySelector('div.alert button')
+    expect(onClearError).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    expect(onClearError).toHaveBeenCalled();
   });
 });

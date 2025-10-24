@@ -1,42 +1,26 @@
-import 'jasmine-ajax';
-
-import {
-  SetColonyCompression,
-  SetColonyDetection,
-  SetGridding,
-  HasJquery,
-} from '../ccc/api';
+import { beforeEach, expect, vi } from 'vitest';
 import * as API from '../ccc/api';
 
-const toHaveMethod = (util, customEqualityTesters) => ({
-  compare: (request, expected) => {
-    const pass = util.equals(
-      request.method.toUpperCase(),
-      expected.toUpperCase(),
-      customEqualityTesters,
-    );
-    return { pass };
-  },
-});
+import { ajaxMock, mostRecentRequest } from './helpers/AjaxMock';
+
+import $ from 'jquery';
+global.$ = $
+global.jQuery = $
+
 
 describe('API', () => {
-  const onSuccess = jasmine.createSpy('onSuccess');
-  const onError = jasmine.createSpy('onError');
-  const mostRecentRequest = () => jasmine.Ajax.requests.mostRecent();
-
-  beforeEach(() => {
-    onSuccess.calls.reset();
-    onError.calls.reset();
-    jasmine.Ajax.install();
-    jasmine.addMatchers({ toHaveMethod });
-  });
+  const onSuccess = vi.fn();
+  const onError = vi.fn();
+  let ajax = null;
 
   afterEach(() => {
-    jasmine.Ajax.uninstall();
+    onSuccess.mockClear();
+    onError.mockClear();
+    $.mockjax.clear();
   });
 
   it('should have jquery', () => {
-    expect(HasJquery()).toBe(true);
+    expect(API.HasJquery()).toBe(true);
   });
 
   describe('SetGridding', () => {
@@ -46,544 +30,525 @@ describe('API', () => {
     const pinningFormat = [42, 18];
     const offset = [6, 7];
     const accessToken = 'open for me';
-    const successCallback = jasmine.createSpy('success');
-    const errorCallback = jasmine.createSpy('error');
-    const args = [
-      cccId, imageId, plate, pinningFormat, offset, accessToken,
-      successCallback, errorCallback,
-    ];
+    const args = [cccId, imageId, plate, pinningFormat, offset, accessToken];
 
     beforeEach(() => {
-      successCallback.calls.reset();
-      errorCallback.calls.reset();
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/plate/*/grid/set',
+        method: 'POST',
+      });
     });
 
     it('should query the correct url', () => {
-      SetGridding(...args);
+      API.SetGridding(...args);
       expect(mostRecentRequest().url)
         .toBe('/api/calibration/CCC42/image/1M4G3/plate/0/grid/set');
     });
 
     it('should send a POST request', () => {
-      SetGridding(...args);
+      API.SetGridding(...args);
       expect(mostRecentRequest()).toHaveMethod('POST');
     });
 
     it('should send the pinning format', () => {
-      SetGridding(...args);
-      const params = JSON.parse(mostRecentRequest().params);
+      API.SetGridding(...args);
+      const params = JSON.parse(mostRecentRequest().data);
       expect(params.pinning_format).toEqual(pinningFormat);
     });
 
     it('should send the offset', () => {
-      SetGridding(...args);
-      const params = JSON.parse(mostRecentRequest().params);
+      API.SetGridding(...args);
+      const params = JSON.parse(mostRecentRequest().data);
       expect(params.gridding_correction).toEqual(offset);
     });
 
     it('should send the access token', () => {
-      SetGridding(...args);
-      const params = JSON.parse(mostRecentRequest().params);
+      API.SetGridding(...args);
+      const params = JSON.parse(mostRecentRequest().data);
       expect(params.access_token).toEqual(accessToken);
     });
 
-    it('Should return a promise that resolves on success', (done) => {
-      API.SetGridding(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('Should return a promise that resolves on success', async () => {
+      await API.SetGridding(...args).then((value) => {
+        expect(value).toEqual({ status: 200 })
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      const errorData = { reason: '(+_+)', grid: [] };
-      API.SetGridding(...args).catch((data) => {
-        expect(data).toEqual(errorData);
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify(errorData),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400 });
+      await API.SetGridding(...args).catch((reason) => {
+        expect(reason).toEqual({ status: 400 });
       });
     });
   });
 
   describe('SetColonyCompression', () => {
+    const cccId = 'CCC42';
+    const imageId = '1M4G3';
+    const plate = 'PL4T3';
+    const accessToken = 'T0P53CR3T';
+    const colony = {
+      blob: [[true, false], [false, true]],
+      background: [[false, true], [true, false]],
+    };
     const cellCount = 666;
-    const args = [
-      'CCC42',
-      '1M4G3',
-      'PL4T3',
-      'T0P53CR3T',
-      {
-        blob: [[true, false], [false, true]],
-        background: [[false, true], [true, false]],
-      },
-      cellCount,
-      4,
-      1,
-      onSuccess,
-      onError,
-    ];
+    const row = 4;
+    const col = 1;
+    const args = [cccId, imageId, plate, accessToken, colony, cellCount, row, col, onSuccess, onError];
 
     beforeEach(() => {
-      onSuccess.calls.reset();
-      onError.calls.reset();
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/plate/*/compress/colony/*/*',
+        method: 'POST',
+      });
     });
 
-    it('should query the correct url', () => {
-      SetColonyCompression(...args);
-      expect(jasmine.Ajax.requests.mostRecent().url)
+    it('should query the correct url', async () => {
+      await API.SetColonyCompression(...args);
+      expect(mostRecentRequest().url)
         .toBe('/api/calibration/CCC42/image/1M4G3/plate/PL4T3/compress/colony/1/4');
     });
 
-    it('should send the cell count', () => {
-      SetColonyCompression(...args);
-      const params = JSON.parse(mostRecentRequest().params);
+    it('should send the cell count', async () => {
+      await API.SetColonyCompression(...args);
+      const params = JSON.parse(mostRecentRequest().data);
       expect(params.cell_count).toEqual(cellCount);
     });
 
-    it('should call onSuccess on success', () => {
-      const data = { foo: 'bar' };
-      SetColonyCompression(...args);
-      jasmine.Ajax.requests.mostRecent().respondWith({
-        status: 200, responseText: JSON.stringify(data),
-      });
-      expect(onSuccess).toHaveBeenCalledWith(data);
+    it('should call onSuccess on success', async () => {
+      await API.SetColonyCompression(...args);
+      expect(onSuccess).toHaveBeenCalledWith({ status: 200 });
     });
 
-    it('should call onError on error', () => {
-      const data = { foo: 'bar' };
-      SetColonyCompression(...args);
-      jasmine.Ajax.requests.mostRecent().respondWith({
-        status: 400, responseText: JSON.stringify(data),
+    it('should call onError on error', async () => {
+      ajax.update({ status: 400 });
+      await API.SetColonyCompression(...args).catch((reason) => {
+        expect(reason.status).toEqual(400);
       });
-      expect(onError).toHaveBeenCalledWith(data);
+      expect(onError).toHaveBeenCalledWith({ status: 400 });
     });
   });
 
   describe('SetColonyDetection', () => {
-    const args = [
-      'CCC42',
-      '1M4G3',
-      'PL4T3',
-      'T0P53CR3T',
-      4,
-      1,
-      onSuccess,
-      onError,
-    ];
+    const cccId = 'CCC42';
+    const imageId = '1M4G3';
+    const plate = 'PL4T3';
+    const accessToken = 'T0P53CR3T';
+    const row = 4;
+    const col = 1;
+    const args = [cccId, imageId, plate, accessToken, row, col, onSuccess, onError];
 
     beforeEach(() => {
-      onSuccess.calls.reset();
-      onError.calls.reset();
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/plate/*/detect/colony/*/*',
+        method: 'POST',
+      });
     });
 
-    it('should query the correct url', () => {
-      SetColonyDetection(...args);
-      expect(jasmine.Ajax.requests.mostRecent().url)
+    it('should query the correct url', async() => {
+      await API.SetColonyDetection(...args);
+      expect(mostRecentRequest().url)
         .toBe('/api/calibration/CCC42/image/1M4G3/plate/PL4T3/detect/colony/1/4');
     });
 
-    it('should call onSuccess on success', () => {
-      const data = { foo: 'bar' };
-      SetColonyDetection(...args);
-      jasmine.Ajax.requests.mostRecent().respondWith({
-        status: 200, responseText: JSON.stringify(data),
-      });
-      expect(onSuccess).toHaveBeenCalledWith(data);
+    it('should call onSuccess on success', async () => {
+      await API.SetColonyDetection(...args);
+      expect(onSuccess).toHaveBeenCalledWith({ status: 200});
     });
 
-    it('should call onError on error', () => {
-      const data = { foo: 'bar' };
-      SetColonyDetection(...args);
-      jasmine.Ajax.requests.mostRecent().respondWith({
-        status: 400, responseText: JSON.stringify(data),
+    it('should call onError on error', async () => {
+      ajax.update({ status: 400 });
+      await API.SetColonyDetection(...args).catch((reason) => {
+        expect(reason.status).toEqual(400);
       });
-      expect(onError).toHaveBeenCalledWith(data);
+      expect(onError).toHaveBeenCalledWith({ status: 400 });
     });
   });
 
   describe('GetMarkers', () => {
+    const fixtureName = 'MyFixture123';
     const image = new File(['foo'], 'myimage.tiff');
-    const args = [
-      'MyFixture123',
-      image,
-    ];
+    const args = [fixtureName, image];
 
-    const mostRecentUrl = () => jasmine.Ajax.requests.mostRecent().url;
-
-    it('should query the correct url', () => {
-      API.GetMarkers(...args);
-      expect(mostRecentUrl()).toBe('/api/data/markers/detect/MyFixture123');
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/data/markers/detect/*',
+        method: 'POST',
+      });
     });
 
-    it('should send a POST request', () => {
-      API.GetMarkers(...args);
+    it('should query the correct url', async () => {
+      await API.GetMarkers(...args);
+      expect(mostRecentRequest().url).toBe('/api/data/markers/detect/MyFixture123');
+    });
+
+    it('should send a POST request', async () => {
+      await API.GetMarkers(...args);
       expect(mostRecentRequest().method).toEqual('POST');
     });
 
-    it('should send the file', () => {
-      API.GetMarkers(...args);
-      expect(mostRecentRequest().params.get('image')).toEqual(image);
+    it('should send the file', async () => {
+      await API.GetMarkers(...args);
+      expect(mostRecentRequest().data.get('image')).toEqual(image);
     });
 
-    it('should set "save" to false', () => {
-      API.GetMarkers(...args);
-      expect(mostRecentRequest().params.get('save')).toEqual('false');
+    it('should set "save" to false', async () => {
+      await API.GetMarkers(...args);
+      expect(mostRecentRequest().data.get('save')).toEqual('false');
     });
 
-    it('should return a promise that resolve on success', (done) => {
-      API.GetMarkers(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolve on success', async () => {
+      await API.GetMarkers(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.GetMarkers(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: "MOCK FAILURE" } });
+      await API.GetMarkers(...args).catch((reason) => {
+        expect(reason).toEqual("MOCK FAILURE");
       });
     });
   });
 
   describe('GetImageid', () => {
+    const cccId = 'CCC0';
     const image = new File(['foo'], 'myimage.tiff');
-    const args = [
-      'CCC0',
-      image,
-      'T0K3N',
-    ];
+    const accessToken = 'T0K3N';
+    const args = [cccId, image, accessToken];
 
-    it('should query the correct url', () => {
-      API.GetImageId(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/add_image',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct url', async () => {
+      await API.GetImageId(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/add_image');
     });
 
-    it('should send a POST request', () => {
-      API.GetImageId(...args);
+    it('should send a POST request', async () => {
+      await API.GetImageId(...args);
       expect(mostRecentRequest().method).toEqual('POST');
     });
 
-    it('should send the image', () => {
-      API.GetImageId(...args);
-      expect(mostRecentRequest().params.get('image')).toEqual(image);
+    it('should send the image', async () => {
+      await API.GetImageId(...args);
+      expect(mostRecentRequest().data.get('image')).toEqual(image);
     });
 
-    it('should send the access token', () => {
-      API.GetImageId(...args);
-      expect(mostRecentRequest().params.get('access_token')).toEqual('T0K3N');
+    it('should send the access token', async () => {
+      await API.GetImageId(...args);
+      expect(mostRecentRequest().data.get('access_token')).toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.GetImageId(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.GetImageId(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.GetImageId(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.GetImageId(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('SetCccImageData', () => {
-    const args = [
-      'CCC0',
-      'IMG0',
-      'T0K3N',
-      [{ key: 'key1', value: 'value1' }, { key: 'key2', value: 'value2' }],
-      'MyFixture',
+    const cccId = 'CCC0';
+    const imageId = 'IMG0';
+    const accessToken = 'T0K3N';
+    const dataArray = [
+      { key: 'key1', value: 'value1' },
+      { key: 'key2', value: 'value2' },
     ];
+    const fixture = 'MyFixture';
+    const args = [cccId, imageId, accessToken, dataArray, fixture];
 
-    it('should query the correct url', () => {
-      API.SetCccImageData(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/data/set',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct url', async () => {
+      await API.SetCccImageData(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/image/IMG0/data/set');
     });
 
-    it('should send a POST request', () => {
-      API.SetCccImageData(...args);
+    it('should send a POST request', async () => {
+      await API.SetCccImageData(...args);
       expect(mostRecentRequest().method).toEqual('POST');
     });
 
-    it('should send the access token', () => {
-      API.SetCccImageData(...args);
-      expect(mostRecentRequest().params.get('access_token'))
+    it('should send the access token', async () => {
+      await API.SetCccImageData(...args);
+      expect(mostRecentRequest().data.get('access_token'))
         .toEqual('T0K3N');
     });
 
-    it('should send the ccc id', () => {
-      API.SetCccImageData(...args);
-      expect(mostRecentRequest().params.get('ccc_identifier'))
+    it('should send the ccc id', async () => {
+      await API.SetCccImageData(...args);
+      expect(mostRecentRequest().data.get('ccc_identifier'))
         .toEqual('CCC0');
     });
 
-    it('should send the image id', () => {
-      API.SetCccImageData(...args);
-      expect(mostRecentRequest().params.get('image_identifier'))
+    it('should send the image id', async () => {
+      await API.SetCccImageData(...args);
+      expect(mostRecentRequest().data.get('image_identifier'))
         .toEqual('IMG0');
     });
 
-    it('should send the fixture name', () => {
-      API.SetCccImageData(...args);
-      expect(mostRecentRequest().params.get('fixture'))
+    it('should send the fixture name', async () => {
+      await API.SetCccImageData(...args);
+      expect(mostRecentRequest().data.get('fixture'))
         .toEqual('MyFixture');
     });
 
-    it('should send the passed in data', () => {
-      API.SetCccImageData(...args);
-      expect(mostRecentRequest().params.get('key1'))
+    it('should send the passed in data', async () => {
+      await API.SetCccImageData(...args);
+      expect(mostRecentRequest().data.get('key1'))
         .toEqual('value1');
-      expect(mostRecentRequest().params.get('key2'))
+      expect(mostRecentRequest().data.get('key2'))
         .toEqual('value2');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.SetCccImageData(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.SetCccImageData(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.SetCccImageData(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.SetCccImageData(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('SetCccImageSlice', () => {
-    const args = [
-      'CCC0',
-      'IMG0',
-      'T0K3N',
-    ];
+    const cccId = 'CCC0';
+    const imageId = 'IMG0';
+    const accessToken = 'T0K3N';
 
-    it('should query the correct url', () => {
-      API.SetCccImageSlice(...args);
+    const args = [cccId, imageId, accessToken];
+
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/slice/set',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct url', async () => {
+      await API.SetCccImageSlice(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/image/IMG0/slice/set');
     });
 
-    it('should send a POST request', () => {
-      API.SetCccImageSlice(...args);
+    it('should send a POST request', async () => {
+      await API.SetCccImageSlice(...args);
       expect(mostRecentRequest()).toHaveMethod('POST');
     });
 
-    it('should send the access token', () => {
-      API.SetCccImageSlice(...args);
-      expect(mostRecentRequest().params.get('access_token'))
+    it('should send the access token', async () => {
+      await API.SetCccImageSlice(...args);
+      expect(mostRecentRequest().data.get('access_token'))
         .toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.SetCccImageSlice(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.SetCccImageSlice(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.SetCccImageSlice(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.SetCccImageSlice(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('SetGrayScaleImageAnalysis', () => {
-    const args = [
-      'CCC0',
-      'IMG0',
-      'T0K3N',
-    ];
+    const cccId = 'CCC0';
+    const imageId = 'IMG0';
+    const accessToken = 'T0K3N';
+    const args = [cccId, imageId, accessToken];
 
-    it('should query the correct URL', () => {
-      API.SetGrayScaleImageAnalysis(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/grayscale/analyse',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.SetGrayScaleImageAnalysis(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/image/IMG0/grayscale/analyse');
     });
 
-    it('should send a POST request', () => {
-      API.SetGrayScaleImageAnalysis(...args);
+    it('should send a POST request', async () => {
+      await API.SetGrayScaleImageAnalysis(...args);
       expect(mostRecentRequest().method)
         .toEqual('POST');
     });
 
-    it('should send the access token', () => {
-      API.SetGrayScaleImageAnalysis(...args);
-      expect(mostRecentRequest().params.get('access_token'))
+    it('should send the access token', async () => {
+      await API.SetGrayScaleImageAnalysis(...args);
+      expect(mostRecentRequest().data.get('access_token'))
         .toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.SetGrayScaleImageAnalysis(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.SetGrayScaleImageAnalysis(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.SetGrayScaleImageAnalysis(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.SetGrayScaleImageAnalysis(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('SetGrayScaleTransform', () => {
-    const args = ['CCC0', 'IMG0', 1, 'T0K3N'];
+    const cccId = 'CCC0';
+    const imageId = 'IMG0';
+    const accessToken = 'T0K3N';
+    const plate = 1;
+    const args = [cccId, imageId, plate, accessToken];
 
-    it('should query the correct URL', () => {
-      API.SetGrayScaleTransform(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/image/*/plate/*/transform',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.SetGrayScaleTransform(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/image/IMG0/plate/1/transform');
     });
 
-    it('should send a POST request', () => {
-      API.SetGrayScaleTransform(...args);
+    it('should send a POST request', async () => {
+      await API.SetGrayScaleTransform(...args);
       expect(mostRecentRequest().method)
         .toEqual('POST');
     });
 
-    it('should send the access_coken', () => {
-      API.SetGrayScaleTransform(...args);
-      expect(mostRecentRequest().params.get('access_token'))
+    it('should send the access_token', async () => {
+      await API.SetGrayScaleTransform(...args);
+      expect(mostRecentRequest().data.get('access_token'))
         .toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.SetGrayScaleTransform(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.SetGrayScaleTransform(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.SetGrayScaleTransform(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.SetGrayScaleTransform(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('GetFixturePlates', () => {
-    const args = ['MyFixture'];
+    const fixtureName = 'MyFixture';
+    const args = [fixtureName];
 
-    it('should query the correct URL', () => {
-      API.GetFixturePlates(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/data/fixture/get/*',
+        method: 'GET',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.GetFixturePlates(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/data/fixture/get/MyFixture');
     });
 
-    it('should send a GET request', () => {
-      API.GetFixturePlates(...args);
+    it('should send a GET request', async () => {
+      await API.GetFixturePlates(...args);
       expect(mostRecentRequest()).toHaveMethod('get');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.GetFixturePlates(...args).then((value) => {
-        expect(value).toEqual('xyz');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ plates: 'xyz' }),
+    it('should return a promise that resolves on success', async () => {
+      ajax.update({ status: 200, responseText: { plates: ["a", "b", "c"] } });
+      await API.GetFixturePlates(...args).then((value) => {
+        expect(value).toEqual(["a", "b", "c"]);
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.GetFixturePlates(...args).catch((reason) => {
-        expect(reason).toEqual('bar');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: 'bar' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.GetFixturePlates(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('SetNewCalibrationPolynomial', () => {
-    const args = ['CCC0', '5', 'T0K3N'];
+    const cccId = 'CCC0';
+    const power = 5;
+    const accessToken = 'T0K3N';
 
-    it('should query the correct URL', () => {
-      API.SetNewCalibrationPolynomial(...args);
+    const args = [cccId, power, accessToken];
+
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/construct/*',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.SetNewCalibrationPolynomial(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/construct/5');
     });
 
-    it('should send a POST request', () => {
-      API.SetNewCalibrationPolynomial(...args);
+    it('should send a POST request', async () => {
+      await API.SetNewCalibrationPolynomial(...args);
       expect(mostRecentRequest().method)
         .toEqual('POST');
     });
 
-    it('should send the access_coken', () => {
-      API.SetNewCalibrationPolynomial(...args);
-      expect(JSON.parse(mostRecentRequest().params).access_token)
+    it('should send the access_token', async () => {
+      await API.SetNewCalibrationPolynomial(...args);
+      expect(JSON.parse(mostRecentRequest().data).access_token)
         .toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.SetNewCalibrationPolynomial(...args).then((value) => {
-        expect(value).toEqual({ foo: 'bar' });
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ foo: 'bar' }),
+    it('should return a promise that resolves on success', async () => {
+      await API.SetNewCalibrationPolynomial(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.SetNewCalibrationPolynomial(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.SetNewCalibrationPolynomial(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
@@ -591,79 +556,81 @@ describe('API', () => {
   describe('GetFixture', () => {
     const args = [];
 
-    it('should query the correct URL', () => {
-      API.GetFixtures(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/data/fixture/names',
+        method: 'GET',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.GetFixtures(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/data/fixture/names');
     });
 
-    it('should send a GET request', () => {
-      API.GetFixtures(...args);
+    it('should send a GET request', async () => {
+      await API.GetFixtures(...args);
       expect(mostRecentRequest()).toHaveMethod('get');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.GetFixtures(...args).then((value) => {
-        expect(value).toEqual(['abc', 'xyz']);
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({ fixtures: ['abc', 'xyz'] }),
+    it('should return a promise that resolves on success', async () => {
+      ajax.update({ status: 200, responseText: { fixtures: ["a", "b", "c"] } });
+      await API.GetFixtures(...args).then((value) => {
+        expect(value).toEqual(["a", "b", "c"]);
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.GetFixtures(...args).catch((reason) => {
-        expect(reason).toEqual('bar');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: 'bar' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.GetFixtures(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('GetPinningFormats', () => {
     const args = [];
+    const apiData = {
+      pinning_formats: [
+        { name: '1x1', value: [1, 1] },
+        { name: '2x4', value: [2, 4] },
+      ],
+    };
+    const pinningFormats = [
+      { name: '1x1', nCols: 1, nRows: 1 },
+      { name: '2x4', nCols: 2, nRows: 4 },
+    ];
 
-    it('should query the correct URL', () => {
-      API.GetPinningFormats(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/analysis/pinning/formats',
+        method: 'GET',
+        responseText: apiData,
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.GetPinningFormats(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/analysis/pinning/formats');
     });
 
-    it('should send a GET request', () => {
+    it('should send a GET request', async () => {
       API.GetPinningFormats(...args);
       expect(mostRecentRequest()).toHaveMethod('get');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      const apiData = {
-        pinning_formats: [
-          { name: '1x1', value: [1, 1] },
-          { name: '2x4', value: [2, 4] },
-        ],
-      };
-      const pinningFormats = [
-        { name: '1x1', nCols: 1, nRows: 1 },
-        { name: '2x4', nCols: 2, nRows: 4 },
-      ];
-      API.GetPinningFormats(...args).then((value) => {
+    it('should return a promise that resolves on success', async () => {
+      await API.GetPinningFormats(...args).then((value) => {
         expect(value).toEqual(pinningFormats);
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify(apiData),
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.GetPinningFormats(...args).catch((reason) => {
-        expect(reason).toEqual('bar');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: 'bar' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.GetPinningFormats(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
@@ -673,86 +640,88 @@ describe('API', () => {
     const reference = 'Professor X';
     const args = [species, reference];
 
-    it('should query the correct URL', () => {
-      API.InitiateCCC(...args);
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/initiate_new',
+        method: 'GET',
+      });
+    });
+
+    it('should query the correct URL', async() => {
+      await API.InitiateCCC(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/initiate_new');
     });
 
-    it('should send a POST request', () => {
-      API.InitiateCCC(...args);
+    it('should send a POST request', async () => {
+      await API.InitiateCCC(...args);
       expect(mostRecentRequest()).toHaveMethod('post');
     });
 
-    it('should send the species', () => {
-      API.InitiateCCC(...args);
-      expect(mostRecentRequest().params.get('species')).toEqual(species);
+    it('should send the species', async () => {
+      await API.InitiateCCC(...args);
+      expect(mostRecentRequest().data.get('species')).toEqual(species);
     });
 
-    it('should send the reference', () => {
-      API.InitiateCCC(...args);
-      expect(mostRecentRequest().params.get('reference')).toEqual(reference);
+    it('should send the reference', async () => {
+      await API.InitiateCCC(...args);
+      expect(mostRecentRequest().data.get('reference')).toEqual(reference);
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      const data = { id: 'CCC0', access_token: 'T0K3N' };
-      API.InitiateCCC(...args).then((value) => {
-        expect(value).toEqual(data);
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify(data),
+    it('should return a promise that resolves on success', async () => {
+      await API.InitiateCCC(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.InitiateCCC(...args).catch((reason) => {
-        expect(reason).toEqual('bar');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: 'bar' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.InitiateCCC(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });
 
   describe('finalizeCalibration', () => {
-    const args = ['CCC0', 'T0K3N'];
+    const cccId = 'CCC0';
+    const accessToken = 'T0K3N';
 
-    it('should query the correct URL', () => {
-      API.finalizeCalibration(...args);
+    const args = [cccId, accessToken];
+
+    beforeEach(() => {
+      ajax = new ajaxMock({
+        url: '/api/calibration/*/finalize',
+        method: 'POST',
+      });
+    });
+
+    it('should query the correct URL', async () => {
+      await API.finalizeCalibration(...args);
       expect(mostRecentRequest().url)
         .toEqual('/api/calibration/CCC0/finalize');
     });
 
-    it('should send a POST request', () => {
-      API.finalizeCalibration(...args);
+    it('should send a POST request', async () => {
+      await API.finalizeCalibration(...args);
       expect(mostRecentRequest().method).toEqual('POST');
     });
 
-    it('should send the access_coken', () => {
-      API.finalizeCalibration(...args);
-      expect(JSON.parse(mostRecentRequest().params).access_token)
+    it('should send the access_token', async () => {
+      await API.finalizeCalibration(...args);
+        expect(JSON.parse(mostRecentRequest().data).access_token)
         .toEqual('T0K3N');
     });
 
-    it('should return a promise that resolves on success', (done) => {
-      API.finalizeCalibration(...args).then((value) => {
-        expect(value).toEqual({});
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 200, responseText: JSON.stringify({}),
+    it('should return a promise that resolves on success', async () => {
+      await API.finalizeCalibration(...args).then((value) => {
+        expect(value).toEqual({ status: 200 });
       });
     });
 
-    it('should return a promise that rejects on error', (done) => {
-      API.finalizeCalibration(...args).catch((reason) => {
-        expect(reason).toEqual('(+_+)');
-        done();
-      });
-      mostRecentRequest().respondWith({
-        status: 400, responseText: JSON.stringify({ reason: '(+_+)' }),
+    it('should return a promise that rejects on error', async () => {
+      ajax.update({ status: 400, responseText: { reason: 'MOCK FAILURE' } });
+      await API.finalizeCalibration(...args).catch((reason) => {
+        expect(reason).toEqual('MOCK FAILURE');
       });
     });
   });

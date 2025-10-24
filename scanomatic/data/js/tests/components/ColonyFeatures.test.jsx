@@ -1,13 +1,12 @@
-import { mount } from 'enzyme';
 import React from 'react';
+import { render } from '@testing-library/react'
 
-import './enzyme-setup';
 import ColonyFeatures from '../../ccc/components/ColonyFeatures';
 import data from '../fixtures/colonyData';
 
 describe('<ColonyFeatures />', () => {
   it('should render a <canvas />', () => {
-    const wrapper = mount(<ColonyFeatures data={data} />);
-    expect(wrapper.find('canvas').exists()).toBe(true);
+    render(<ColonyFeatures data={data} />);
+    expect(document.querySelectorAll('canvas')).toHaveLength(1);
   });
 });

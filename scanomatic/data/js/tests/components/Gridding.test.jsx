@@ -1,86 +1,89 @@
-import { shallow } from 'enzyme';
 import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react'
+import '@testing-library/jest-dom'
 
-import './enzyme-setup';
 import Gridding from '../../ccc/components/Gridding';
 
 describe('<Gridding />', () => {
   const props = {
     loading: false,
-    onRegrid: jasmine.createSpy('onRegrid'),
+    onRegrid: vi.fn(),
     rowOffset: 1,
     colOffset: 2,
-    onRowOffsetChange: jasmine.createSpy('onRowOffsetChange'),
-    onColOffsetChange: jasmine.createSpy('onColOffsetChange'),
+    onRowOffsetChange: vi.fn(),
+    onColOffsetChange: vi.fn(),
   };
 
   it('should render a title', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    expect(wrapper.find('h4').text()).toEqual('Gridding');
+    render(<Gridding {...props} />);
+    expect(screen.getByRole('heading', { level: 4 })).toHaveTextContent('Gridding');
   });
 
   it('should render a Re-grid <Button />', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    expect(wrapper.find('form .btn-regrid').exists()).toBe(true);
-    expect(wrapper.find('form .btn-regrid').text()).toEqual('Re-grid');
+    render(<Gridding {...props} />);
+    expect(screen.getByRole('button', { name: /re-grid/i })).toBeInTheDocument();
   });
 
   it('should call onRegrid when Re-grid button is clicked', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    wrapper.find('form .btn-regrid').simulate('click');
+    render(<Gridding {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: /re-grid/i }));
     expect(props.onRegrid).toHaveBeenCalled();
   });
 
   it('should render a number input for the row offset', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    const input = wrapper.find('input.row-offset');
-    expect(input.exists()).toBe(true);
-    expect(input.prop('type')).toEqual('number');
-    expect(input.prop('value')).toEqual(props.rowOffset);
+    const {container} = render(<Gridding {...props} />);
+    const input = container.querySelector('input.row-offset');
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveAttribute('type', 'number');
+    expect(input).toHaveValue(props.rowOffset);
   });
 
   it('should call onRowOffsetChange when the row offset is changed', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    wrapper.find('input.row-offset')
-      .simulate('change', { target: { value: '42' } });
+    const {container} = render(<Gridding {...props} />);
+    const input = container.querySelector('input.row-offset');
+    fireEvent.change(input, { target: { value: '42' } });
     expect(props.onRowOffsetChange).toHaveBeenCalledWith(42);
   });
 
   it('should render a number input for the col offset', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    const input = wrapper.find('input.col-offset');
-    expect(input.exists()).toBe(true);
-    expect(input.prop('type')).toEqual('number');
-    expect(input.prop('value')).toEqual(props.colOffset);
+    const {container} = render(<Gridding {...props} />);
+    const input = container.querySelector('input.col-offset');
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveAttribute('type', 'number');
+    expect(input).toHaveValue(props.colOffset);
   });
 
   it('should call onColOffsetChange when the col offset is changed', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    wrapper.find('input.col-offset')
-      .simulate('change', { target: { value: '42' } });
+    const {container} = render(<Gridding {...props} />);
+    const input = container.querySelector('input.col-offset');
+    fireEvent.change(input, { target: { value: '42' } });
     expect(props.onColOffsetChange).toHaveBeenCalledWith(42);
   });
 
   it('should render the error as alert-danger', () => {
-    const wrapper = shallow(<Gridding {...props} error="XxX" />);
-    expect(wrapper.find('form .alert-danger').text()).toContain('XxX');
+    const {container} = render(<Gridding {...props} error="XxX" />);
+    const alert = container.querySelector('form .alert-danger');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent('XxX');
   });
 
   it('should render an alert-success if no error', () => {
-    const wrapper = shallow(<Gridding {...props} />);
-    expect(wrapper.find('form .alert-success').text())
-      .toContain('Gridding was succesful!');
+    const {container} = render(<Gridding {...props} />);
+    const alert = container.querySelector('form .alert-success');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Gridding was succesful!');
   });
 
   describe('loading state', () => {
     it('should render a progress bar', () => {
-      const wrapper = shallow(<Gridding {...props} loading />);
-      expect(wrapper.find('div.progress').exists()).toBeTruthy();
+      const {container} = render(<Gridding {...props} loading />);
+      const progress = container.querySelector('div.progress');
+      expect(progress).toBeInTheDocument();
     });
 
     it('should hide the form', () => {
-      const wrapper = shallow(<Gridding {...props} loading />);
-      expect(wrapper.find('form').exists()).toBeFalsy();
+      render(<Gridding {...props} loading />);
+      expect(screen.queryByRole('form')).not.toBeInTheDocument();
     });
   });
 });

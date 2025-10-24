@@ -1,166 +1,164 @@
-import { shallow } from 'enzyme';
 import React from 'react';
 
-import './enzyme-setup';
-import PlateEditor, { PlateStatusLabel } from '../../ccc/components/PlateEditor';
 import cccMetadata from '../fixtures/cccMetadata';
+import PlateEditor, { PlateStatusLabel } from '../../ccc/components/PlateEditor';
+import PlateContainer from '../../ccc/containers/PlateContainer';
+import PlateProgress from '../../ccc/components/PlateProgress';
+import Gridding from '../../ccc/components/Gridding';
+import ColonyEditorContainer from '../../ccc/containers/ColonyEditorContainer';
+
+import { render, screen } from '@testing-library/react'
+import '@testing-library/jest-dom'
+
+import { ajaxMock } from '../helpers/AjaxMock';
+
+import $ from 'jquery'
+vi.stubGlobal('$', $);
+vi.stubGlobal('jQuery', $);
+
+vi.mock('../../ccc/components/Gridding');
+vi.mock('../../ccc/containers/ColonyEditorContainer');
+vi.mock('../../ccc/containers/PlateContainer');
+vi.mock('../../ccc/components/PlateProgress', {spy: true});
 
 describe('<PlateEditor />', () => {
-  let props;
+  const props = {
+    cccMetadata,
+    imageId: '1M4G3',
+    imageName: 'myimage.tiff',
+    plateId: 1,
+    onClickNext: vi.fn(),
+    onColonyFinish: vi.fn(),
+    rowOffset: 1,
+    colOffset: 2,
+    onRowOffsetChange: vi.fn(),
+    onColOffsetChange: vi.fn(),
+    onRegrid: vi.fn(),
+    griddingError: 'XxX',
+    griddingLoading: true,
+    selectedColony: { row: 1, col: 2 },
+    step: 'pre-processing',
+  };
 
   beforeEach(() => {
-    props = {
-      cccMetadata,
-      imageId: '1M4G3',
-      imageName: 'myimage.tiff',
-      plateId: 1,
-      onClickNext: jasmine.createSpy('onClickNext'),
-      onColonyFinish: jasmine.createSpy('onColonyFinish'),
-      rowOffset: 1,
-      colOffset: 2,
-      onRowOffsetChange: jasmine.createSpy('onRowOffsetChange'),
-      onColOffsetChange: jasmine.createSpy('onColOffsetChange'),
-      onRegrid: jasmine.createSpy('onRegrid'),
-      griddingError: 'XxX',
-      griddingLoading: true,
-      selectedColony: { row: 1, col: 2 },
-      step: 'pre-processing',
-    };
+    vi.clearAllMocks();
   });
 
   it('should render a bootstrap panel', () => {
-    const wrapper = shallow(<PlateEditor {...props} />);
-    expect(wrapper.find('div.panel').exists()).toBeTruthy();
+    const {container} = render(<PlateEditor {...props} />);
+    expect(container.querySelector('div.panel')).toBeInTheDocument();
   });
 
   it('should show the image title and plate number in the panel heading', () => {
-    const wrapper = shallow(<PlateEditor {...props} />);
-    expect(wrapper.find('div.panel-heading').text())
-      .toContain('myimage.tiff, Plate 1');
+    const {container} = render(<PlateEditor {...props} />);
+    expect(container.querySelector('div.panel-heading')).toHaveTextContent('myimage.tiff, Plate 1');
   });
 
   describe('gridding', () => {
+    new ajaxMock({url: '/api/calibration/*/image/*/plate/*/detect/colony/*/*', method: 'POST'});
+
     it('should render a <PlateContainer />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('PlateContainer').exists()).toBeTruthy();
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(PlateContainer).toHaveBeenCalled();
     });
 
-    it('should renedr a <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').exists()).toBeTruthy();
+    it('should render a <Gridding />', () => {
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding).toHaveBeenCalled();
     });
 
     it('should render a <button /> "Next"', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('button.btn-next').text()).toEqual('Next');
+      const {container} = render(<PlateEditor {...props} step="gridding" />);
+      expect(container.querySelector('button.btn-next')).toHaveTextContent('Next');
     });
 
     it('should disable the <button /> if griddingLoading is true', () => {
-      const wrapper = shallow(<PlateEditor
-        {...props}
-        step="gridding"
-        griddingLoading
-        griddingError={null}
-      />);
-      expect(wrapper.find('.btn-next').prop('disabled')).toBeTruthy();
+      const {container} = render(<PlateEditor {...props} step="gridding" griddingLoading griddingError={null} />);
+      expect(container.querySelector('button.btn-next')).toBeDisabled();
     });
 
     it('should disable the <button /> if griddingError is not empty', () => {
-      const wrapper = shallow(<PlateEditor
-        {...props}
-        step="gridding"
-        griddingLoading={false}
-        griddingError="Error"
-      />);
-      expect(wrapper.find('.btn-next').prop('disabled')).toBeTruthy();
+      const {container} = render(<PlateEditor {...props} step="gridding" griddingLoading={false} griddingError="Error"/>);
+      expect(container.querySelector('button.btn-next')).toBeDisabled();
     });
 
     it('should enable the <button /> if griddingLoading is false and griddingError is null', () => {
-      const wrapper = shallow(<PlateEditor
-        {...props}
-        step="gridding"
-        griddingLoading={false}
-        griddingError={null}
-      />);
-      expect(wrapper.find('.btn-next').prop('disabled')).toBeFalsy();
+      const {container} = render(<PlateEditor {...props} step="gridding" griddingLoading={false} griddingError={null} />);
+      expect(container.querySelector('button.btn-next')).toBeEnabled();
     });
 
     it('should pass onRowOffsetChange to <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').prop('onRowOffsetChange'))
-        .toBe(props.onRowOffsetChange);
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding.mock.instances[0]).toHaveProperty('props.onRowOffsetChange', props.onRowOffsetChange);
     });
 
     it('should pass onColOffsetChange to <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').prop('onColOffsetChange'))
-        .toBe(props.onColOffsetChange);
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding.mock.instances[0]).toHaveProperty('props.onColOffsetChange', props.onColOffsetChange);
     });
 
     it('should pass onRegrid to <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').prop('onRegrid'))
-        .toBe(props.onRegrid);
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding.mock.instances[0]).toHaveProperty('props.onRegrid', props.onRegrid);
     });
 
     it('should pass griddingError to <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').prop('error')).toEqual('XxX');
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding.mock.instances[0]).toHaveProperty('props.error', 'XxX');
     });
 
     it('should pass griddingLoading to <Gridding />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('Gridding').prop('loading')).toEqual(true);
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(Gridding.mock.instances[0]).toHaveProperty('props.loading', true);
     });
 
     it('should set the title to "Gridding"', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="gridding" />);
-      expect(wrapper.find('h3').text()).toEqual('Step 2: Gridding');
+      render(<PlateEditor {...props} step="gridding" />);
+      expect(screen.getByRole('heading', { name: /Step 2: Gridding/i })).toBeInTheDocument();
     });
   });
 
   describe('colony-detection', () => {
     it('should set the title to "Colony Detection"', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('h3').text()).toEqual('Step 3: Colony Detection');
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(screen.getByRole('heading', { name: /Step 3: Colony Detection/i })).toBeInTheDocument();
     });
 
     it('should render a <ColonyEditorContainer />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('ColonyEditorContainer').exists()).toBeTruthy();
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(ColonyEditorContainer).toHaveBeenCalled();
     });
 
     it('should pass the current colony row/col to the <ColonyEditorContainer />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('ColonyEditorContainer').prop('row')).toEqual(1);
-      expect(wrapper.find('ColonyEditorContainer').prop('col')).toEqual(2);
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(ColonyEditorContainer.mock.instances[0]).toHaveProperty('props.row', 1);
+      expect(ColonyEditorContainer.mock.instances[0]).toHaveProperty('props.col', 2);
     });
 
     it('should pass the current colony row/col to the <PlateContainer />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('PlateContainer').prop('selectedColony'))
-        .toEqual(props.selectedColony);
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(PlateContainer.mock.instances[0]).toHaveProperty('props.selectedColony', props.selectedColony);
     });
 
     it('should call onColonyFinish when <ColonyEditorContainer /> finishes', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      wrapper.find('ColonyEditorContainer').prop('onFinish')();
+      render(<PlateEditor {...props} step="colony-detection" />);
+      ColonyEditorContainer.mock.instances[0].props.onFinish();
       expect(props.onColonyFinish).toHaveBeenCalled();
     });
 
     it('should render a <PlateProgress />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('PlateProgress').exists()).toBeTruthy();
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(PlateProgress).toHaveBeenCalled();
     });
 
     it('should pass the total number of colony to the <PlateProgress />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('PlateProgress').prop('max')).toEqual(6);
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(PlateProgress).toHaveBeenCalledWith(expect.objectContaining({ max: 6 }), expect.anything());
     });
 
     it('should pass the position of the current colony to the <PlateProgress />', () => {
-      const wrapper = shallow(<PlateEditor {...props} step="colony-detection" />);
-      expect(wrapper.find('PlateProgress').prop('now')).toEqual(4);
+      render(<PlateEditor {...props} step="colony-detection" />);
+      expect(PlateProgress).toHaveBeenCalledWith(expect.objectContaining({ now: 4 }), expect.anything());
     });
   });
 });
@@ -168,61 +166,61 @@ describe('<PlateEditor />', () => {
 describe('<PlateStatusLabel />', () => {
   describe('step=pre-processing', () => {
     it('should have class label-default', () => {
-      const wrapper = shallow(<PlateStatusLabel step="pre-processing" />);
-      expect(wrapper.prop('className')).toContain('label-default');
+      const {container} = render(<PlateStatusLabel step="pre-processing" />);
+      expect(container.firstChild).toHaveClass('label-default');
     });
 
     it('should have text Pre-processing...', () => {
-      const wrapper = shallow(<PlateStatusLabel step="pre-processing" />);
-      expect(wrapper.text()).toContain('Pre-processing...');
+      const {container} = render(<PlateStatusLabel step="pre-processing" />);
+      expect(container).toHaveTextContent('Pre-processing...');
     });
   });
 
   describe('step=gridding, griddingError=null', () => {
-    it('should have class label-info', () => {
-      const wrapper = shallow(<PlateStatusLabel step="gridding" />);
-      expect(wrapper.prop('className')).toContain('label-default');
+    it('should have class label-default', () => {
+      const {container} = render(<PlateStatusLabel step="gridding" />);
+      expect(container.firstChild).toHaveClass('label-default');
     });
 
     it('should have text Gridding...', () => {
-      const wrapper = shallow(<PlateStatusLabel step="gridding" />);
-      expect(wrapper.text()).toContain('Gridding...');
+      const {container} = render(<PlateStatusLabel step="gridding" />);
+      expect(container).toHaveTextContent('Gridding...');
     });
   });
 
   describe('step=gridding, griddingError!=null', () => {
     it('should have class label-danger', () => {
-      const wrapper = shallow(<PlateStatusLabel step="gridding" griddingError="xxx" />);
-      expect(wrapper.prop('className')).toContain('label-danger');
+      const {container} = render(<PlateStatusLabel step="gridding" griddingError="xxx" />);
+      expect(container.firstChild).toHaveClass('label-danger');
     });
 
     it('should have text Gridding error', () => {
-      const wrapper = shallow(<PlateStatusLabel step="gridding" griddingError="xxx" />);
-      expect(wrapper.text()).toContain('Gridding error');
+      const {container} = render(<PlateStatusLabel step="gridding" griddingError="xxx" />);
+      expect(container).toHaveTextContent('Gridding error');
     });
   });
 
   describe('step=colony-detection, now=42, total=96', () => {
     it('should have class label-primary', () => {
-      const wrapper = shallow(<PlateStatusLabel step="colony-detection" now={42} max={96} />);
-      expect(wrapper.prop('className')).toContain('label-primary');
+      const {container} = render(<PlateStatusLabel step="colony-detection" now={42} max={96} />);
+      expect(container.firstChild).toHaveClass('label-primary');
     });
 
     it('should have text 42/96', () => {
-      const wrapper = shallow(<PlateStatusLabel step="colony-detection" now={42} max={96} />);
-      expect(wrapper.text()).toContain('42/96');
+      const {container} = render(<PlateStatusLabel step="colony-detection" now={42} max={96} />);
+      expect(container).toHaveTextContent('42/96');
     });
   });
 
   describe('step=done', () => {
     it('should have class label-success', () => {
-      const wrapper = shallow(<PlateStatusLabel step="done" />);
-      expect(wrapper.prop('className')).toContain('label-success');
+      const {container} = render(<PlateStatusLabel step="done" />);
+      expect(container.firstChild).toHaveClass('label-success');
     });
 
     it('should have text Done!', () => {
-      const wrapper = shallow(<PlateStatusLabel step="done" />);
-      expect(wrapper.text()).toContain('Done!');
+      const {container} = render(<PlateStatusLabel step="done" />);
+      expect(container).toHaveTextContent('Done!');
     });
   });
 });

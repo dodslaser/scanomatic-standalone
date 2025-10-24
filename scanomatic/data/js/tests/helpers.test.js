@@ -7,6 +7,12 @@ import {
 import testPlateImageURL from './fixtures/testPlate.png';
 import * as API from '../ccc/api';
 
+import $ from 'jquery'
+
+global.$ = $
+global.jQuery = $
+
+
 describe('loadImage()', () => {
   it('should return a promise that resolves for a valid image URL', (done) => {
     loadImage(testPlateImageURL).then(() => done());
@@ -24,67 +30,61 @@ describe('UploadImage', () => {
   const file = new File(['foo'], 'myimage.tiff');
   const token = 'T0K3N1';
   const markers = [[1, 2], [3, 4], [5, 6]];
-  const progress = jasmine.createSpy('progress');
+  const progress = vi.fn();
 
   const args = [cccId, file, fixture, token, progress];
 
   beforeEach(() => {
-    progress.calls.reset();
-    spyOn(API, 'GetMarkers')
-      .and.callFake(() => Promise.resolve({ markers }));
-    spyOn(API, 'GetImageId')
-      .and.callFake(() => Promise.resolve({ image_identifier: imageId }));
-    spyOn(API, 'SetCccImageData')
-      .and.callFake(() => Promise.resolve({}));
-    spyOn(API, 'SetCccImageSlice')
-      .and.callFake(() => Promise.resolve({}));
-    spyOn(API, 'SetGrayScaleImageAnalysis')
-      .and.callFake(() => Promise.resolve({}));
+    progress.mockClear();
+    vi.spyOn(API, 'GetMarkers')
+      .mockImplementation(() => Promise.resolve({ markers }));
+    vi.spyOn(API, 'GetImageId')
+      .mockImplementation(() => Promise.resolve({ image_identifier: imageId }));
+    vi.spyOn(API, 'SetCccImageData')
+      .mockImplementation(() => Promise.resolve({}));
+    vi.spyOn(API, 'SetCccImageSlice')
+      .mockImplementation(() => Promise.resolve({}));
+    vi.spyOn(API, 'SetGrayScaleImageAnalysis')
+      .mockImplementation(() => Promise.resolve({}));
   });
 
   it('should call GetMarkers', (done) => {
     uploadImage(...args).then(() => {
       expect(API.GetMarkers).toHaveBeenCalledWith(fixture, file);
-      done();
     });
   });
 
   it('should set progress to 0/5 "Getting markers"', (done) => {
     uploadImage(...args).then(() => {
       expect(progress).toHaveBeenCalledWith(0, 5, 'Getting markers');
-      done();
     });
   });
 
   it('should reject if GetMarkers rejects', (done) => {
     API.GetMarkers
-      .and.callFake(() => Promise.reject(new Error('Whoopsie')));
+      .mockImplementation(() => Promise.reject(new Error('Whoopsie')));
     uploadImage(...args).catch((reason) => {
       expect(reason.message).toEqual('Whoopsie');
-      done();
     });
   });
 
   it('should call GetImageId', (done) => {
     uploadImage(...args).then(() => {
       expect(API.GetImageId).toHaveBeenCalledWith(cccId, file, token);
-      done();
     });
   });
 
   it('should set progress to 1/5 "Uploading image"', (done) => {
     uploadImage(...args).then(() => {
       expect(progress).toHaveBeenCalledWith(1, 5, 'Uploading image');
-      done();
     });
   });
 
   it('should reject if GetImageId rejects', (done) => {
     API.GetImageId
-      .and.callFake(() => Promise.reject(new Error('Whoopsie')));
+      .mockImplementation(() => Promise.reject(new Error('Whoopsie')));
     uploadImage(...args).catch((reason) => {
       expect(reason.message).toEqual('Whoopsie');
-      done();
     });
   });
 
@@ -96,23 +96,20 @@ describe('UploadImage', () => {
     uploadImage(...args).then(() => {
       expect(API.SetCccImageData)
         .toHaveBeenCalledWith(cccId, imageId, token, data, fixture);
-      done();
     });
   });
 
   it('should set progress to 2/5 "Setting image CCC data"', (done) => {
     uploadImage(...args).then(() => {
       expect(progress).toHaveBeenCalledWith(2, 5, 'Setting image CCC data');
-      done();
     });
   });
 
   it('should reject if SetCccImageData rejects', (done) => {
     API.SetCccImageData
-      .and.callFake(() => Promise.reject(new Error('Whoopsie')));
+      .mockImplementation(() => Promise.reject(new Error('Whoopsie')));
     uploadImage(...args).catch((reason) => {
       expect(reason.message).toEqual('Whoopsie');
-      done();
     });
   });
 
@@ -120,23 +117,20 @@ describe('UploadImage', () => {
     uploadImage(...args).then(() => {
       expect(API.SetCccImageSlice)
         .toHaveBeenCalledWith(cccId, imageId, token);
-      done();
     });
   });
 
   it('should set progress to 3/5 "Slicing image"', (done) => {
     uploadImage(...args).then(() => {
       expect(progress).toHaveBeenCalledWith(3, 5, 'Slicing image');
-      done();
     });
   });
 
   it('should reject if SetCccImageSlice rejects', (done) => {
     API.SetCccImageSlice
-      .and.callFake(() => Promise.reject(new Error('Whoopsie')));
+      .mockImplementation(() => Promise.reject(new Error('Whoopsie')));
     uploadImage(...args).catch((reason) => {
       expect(reason.message).toEqual('Whoopsie');
-      done();
     });
   });
 
@@ -144,30 +138,26 @@ describe('UploadImage', () => {
     uploadImage(...args).then(() => {
       expect(API.SetGrayScaleImageAnalysis)
         .toHaveBeenCalledWith(cccId, imageId, token);
-      done();
     });
   });
 
   it('should set progress to 4/5 "Setting grayscase"', (done) => {
     uploadImage(...args).then(() => {
       expect(progress).toHaveBeenCalledWith(4, 5, 'Setting grayscale');
-      done();
     });
   });
 
   it('should reject if SetGrayScaleImageAnalysis rejects', (done) => {
     API.SetGrayScaleImageAnalysis
-      .and.callFake(() => Promise.reject(new Error('Whoopsie')));
+      .mockImplementation(() => Promise.reject(new Error('Whoopsie')));
     uploadImage(...args).catch((reason) => {
       expect(reason.message).toEqual('Whoopsie');
-      done();
     });
   });
 
   it('should return a promise with the image id', (done) => {
     uploadImage(...args).then((value) => {
       expect(value).toEqual(imageId);
-      done();
     });
   });
 });

@@ -7,7 +7,11 @@
     "lint": "eslint --ext mjs,jsx,js scanomatic/data/js/ccc scanomatic/data/js/tests"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^12.0.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/browser": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
     "babel-core": "^6.26.0",
     "babel-eslint": "^10.1.0",
     "babel-loader": "^7.1.2",
@@ -15,6 +19,7 @@
     "babel-preset-env": "^1.6.1",
     "babel-preset-react": "^6.24.1",
     "biome": "^0.3.3",
+    "canvas": "^3.2.0",
     "css-loader": "^5.0.0",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.0.2",
@@ -24,20 +29,28 @@
     "eslint-plugin-jsx-a11y": "^6.0.2",
     "eslint-plugin-react": "^7.5.1",
     "file-loader": "^6.2.0",
+    "happy-dom": "^19.0.2",
     "jasmine-ajax": "^4.0.0",
     "jasmine-core": "^4.0.0",
+    "jquery-mockjax": "^2.6.1",
+    "jsdom": "^27.0.0",
     "karma": "^6.3.16",
     "karma-chrome-launcher": "^3.1.0",
     "karma-coverage": "^2.1.0",
     "karma-jasmine": "^4.0.1",
     "karma-mocha-reporter": "^2.2.5",
     "karma-webpack": "^2.0.13",
+    "playwright": "^1.55.1",
+    "pnpm": "^10.18.0",
+    "react-dom": "^16.0.0",
     "react-test-renderer": "^16.0.0",
     "style-loader": "^2.0.0",
     "unplugin-auto-import": "^20.2.0",
+    "vite": "npm:rolldown-vite@latest",
     "vite-plugin-css-injected-by-js": "^3.5.2",
-    "vite": "npm:rolldown-vite@latest"
-  },
+    "vitest-browser-react": "^1.0.1",
+    "svgdom": "^0.1.22",
+    "vitest": "^4.0.0-beta.17",  },
   "dependencies": {
     "bootstrap": "^3.4.0",
     "bootstrap-toggle": "^2.2.2",
@@ -49,7 +62,6 @@
     "jquery-ui-dist": "^1.13.0",
     "prop-types": "^15.6.0",
     "react": "^16.0.0",
-    "react-dom": "^16.0.0",
     "spin": "^0.0.1"
   }
 }

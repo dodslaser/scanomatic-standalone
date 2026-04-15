@@ -17,10 +17,10 @@ from . import (
 
 __author__ = "Martin Zackrisson"
 __copyright__ = "Swedish copyright laws apply"
-__credits__ = ["Martin Zackrisson", "Mats Kvarnstroem", "Andreas Skyman", ""]
+__credits__ = ["Martin Zackrisson", "Mats Kvarnstroem", "Andreas Skyman", "Erik Demitz-Helin", ""]
 __license__ = "GPL v3.0"
-__version__ = "v3.0.0"
-__maintainer__ = "Martin Zackrisson"
+__version__ = "v3.1.0"
+__maintainer__ = "Erik Demitz-Helin"
 __status__ = "Development"
 __all__ = [
     "data_processing",

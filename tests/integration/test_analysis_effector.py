@@ -3,12 +3,13 @@ from collections import namedtuple
 import numpy
 import pytest
 
+from scanomatic.image_analysis import grayscale
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
 from scanomatic.models.factories.rpc_job_factory import RPC_Job_Model_Factory
 from scanomatic.models.validators.validate import validate
 from scanomatic.server.analysis_effector import AnalysisEffector
-from scanomatic.image_analysis import grayscale
 
+numpy.random.seed(42)
 
 @pytest.fixture(scope='session')
 def proj1(pytestconfig):
@@ -17,7 +18,7 @@ def proj1(pytestconfig):
 
 @pytest.fixture
 def grayscales(tmpdir, pytestconfig):
-    source = pytestconfig.rootdir.join('data/config/')
+    source = pytestconfig.rootdir.join('scanomatic/data/config/')
     target = tmpdir.mkdir('config')
     for fname in ['grayscales.cfg']:
         source.join(fname).copy(target)

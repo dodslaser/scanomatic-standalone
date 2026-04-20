@@ -4,9 +4,11 @@ import webbrowser
 from socket import error
 from threading import Thread
 
+import uvicorn
 import requests
 from flask import Flask, send_from_directory
-from flask_cors import CORS  # type: ignore
+from flask_cors import CORS
+from asgiref.wsgi import WsgiToAsgi
 
 from scanomatic.io.app_config import Config
 from scanomatic.io.logger import get_logger
@@ -85,17 +87,20 @@ def launch_server(host, port, debug):
     settings_api.add_routes(app)
     experiment_api.add_routes(app, rpc_client)
 
-    if debug:
-        CORS(app)
-        _LOGGER.warning(
-            "\nRunning in debug mode, causes sequrity vunerabilities:\n"
-            " * Remote code execution\n"
-            " * Cross-site request forgery\n"
-            "   (https://en.wikipedia.org/wiki/Cross-site_request_forgery)\n"
-            "\nAnd possibly more issues"
-        )
     try:
-        app.run(port=port, host=host, debug=debug)
+        if debug:
+            CORS(app)
+            _LOGGER.warning(
+                "\nRunning in debug mode, causes sequrity vunerabilities:\n"
+                " * Remote code execution\n"
+                " * Cross-site request forgery\n"
+                "   (https://en.wikipedia.org/wiki/Cross-site_request_forgery)\n"
+                "\nAnd possibly more issues"
+            )
+            app.run(address=host, port=port, debug=True)
+        else:
+            asgi_app = WsgiToAsgi(app)
+            uvicorn.run(asgi_app, host=host, port=port)
     except error:
         _LOGGER.warning(
             "Could not bind socket, probably server is already running and"

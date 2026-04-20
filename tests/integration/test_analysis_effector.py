@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-import numpy
+import numpy as np
 import pytest
 
 from scanomatic.image_analysis import grayscale
@@ -8,8 +8,6 @@ from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
 from scanomatic.models.factories.rpc_job_factory import RPC_Job_Model_Factory
 from scanomatic.models.validators.validate import validate
 from scanomatic.server.analysis_effector import AnalysisEffector
-
-numpy.random.seed(42)
 
 @pytest.fixture(scope='session')
 def proj1(pytestconfig):
@@ -70,8 +68,8 @@ def test_colony_sizes(proj1, proj1_analysis: ProjInfo):
     for _ in analysis_effector:
         pass
 
-    expected = numpy.load(str(proj1.join('analysis/image_0_data.npy')))
-    actual = numpy.load(
+    expected = np.load(str(proj1.join('analysis/image_0_data.npy')))
+    actual = np.load(
         str(proj1_analysis.workdir.join('analysis/image_0_data.npy')))
     numpy.testing.assert_allclose(expected, actual, rtol=.01)
 
@@ -82,11 +80,11 @@ def test_grid_plate(proj1, proj1_analysis: ProjInfo):
     for _ in analysis_effector:
         pass
 
-    expected = numpy.load(str(proj1.join('analysis/grid_plate___1.npy')))
-    actual = numpy.load(
+    expected = np.load(str(proj1.join('analysis/grid_plate___1.npy')))
+    actual = np.load(
         str(proj1_analysis.workdir.join('analysis/grid_plate___1.npy')),
     )
-    numpy.testing.assert_allclose(expected, actual, atol=3)
+    np.testing.assert_allclose(expected, actual, atol=3)
 
 
 def test_grid_size(proj1, proj1_analysis: ProjInfo):
@@ -95,8 +93,8 @@ def test_grid_size(proj1, proj1_analysis: ProjInfo):
     for _ in analysis_effector:
         pass
 
-    expected = numpy.load(str(proj1.join('analysis/grid_size___1.npy')))
-    actual = numpy.load(
+    expected = np.load(str(proj1.join('analysis/grid_size___1.npy')))
+    actual = np.load(
         str(proj1_analysis.workdir.join('analysis/grid_size___1.npy')),
     )
     assert (expected == actual).all()

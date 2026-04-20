@@ -16,8 +16,6 @@ from scanomatic.data_processing.phenotyper import Phenotyper
 
 
 def build_test_phenotyper():
-
-    np.random.seed = 42
     x_data = np.arange(100) * 1/3.
     y_data = np.array([[[
         # 0: No data
@@ -56,8 +54,6 @@ def build_model(phenotyper_object, test_curve):
         phenotyper_object, 0, (0, test_curve), DEFAULT_THRESHOLDS)
 
 
-@pytest.mark.skip(
-    reason='Fails randomly for the intercept though it should not')
 def test_no_growth_only_noise():
 
     phenotyper_object = build_test_phenotyper()

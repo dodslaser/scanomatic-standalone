@@ -6,7 +6,7 @@ from numpy.lib.stride_tricks import as_strided
 from scipy.ndimage import gaussian_filter1d  # type: ignore
 from scipy.signal import convolve2d  # type: ignore
 
-from scanomatic.generics.maths import mid50_mean as iqr_mean
+from scanomatic.generics.maths import mid50_mean
 from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.models.fixture_models import GrayScaleAreaModel
@@ -429,7 +429,7 @@ def find_grayscale_locations(
                 bottom = int(round(bottom))
 
                 gray_scale.append(
-                    iqr_mean(im_trimmed[left: right, top: bottom]),
+                    mid50_mean(im_trimmed[left: right, top: bottom]),
                 )
 
                 if DEBUG_DETECTION:
@@ -545,7 +545,7 @@ def find_grayscale_locations(
             if right >= im_trimmed.shape[0]:
                 right = im_trimmed.shape[0] - 1
 
-            gray_scale.append(iqr_mean(
+            gray_scale.append(mid50_mean(
                 im_trimmed[int(left): int(right), int(top): int(bottom)]
             ))
 

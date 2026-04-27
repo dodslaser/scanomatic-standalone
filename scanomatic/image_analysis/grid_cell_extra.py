@@ -3,8 +3,10 @@ from enum import Enum
 from typing import Any, Optional
 
 import numpy as np
+import cv2
+from numba import njit
+import bottleneck as bn
 from scipy.ndimage import (  # type: ignore
-    binary_erosion,
     center_of_mass,
     gaussian_filter,
     label
@@ -13,8 +15,7 @@ from scanomatic.data_processing.convolution import FilterArray
 
 import scanomatic.image_analysis.blob as blob
 import scanomatic.image_analysis.histogram as histogram
-from scanomatic.generics.maths import mid50_mean as iqr_mean
-from scanomatic.generics.maths import quantiles_stable
+from scanomatic.generics.maths import quantiles_stable, binary_erosion, mid50_mean
 from scanomatic.models.analysis_model import MEASURES
 from scanomatic.models.factories.analysis_factories import (
     AnalysisFeaturesFactory
@@ -61,12 +62,9 @@ def get_round_kernel(
     radius: float = 6.0,
     outline: bool = False,
 ) -> FilterArray:
-
-    round_kernel = np.zeros(
-        ((radius + 1) * 2 + 1, (radius + 1) * 2 + 1),
-        dtype=bool
-    )
+    diameter = (radius + 1) * 2 + 1
     center_offset = radius + 1
+    round_kernel = np.zeros((diameter, diameter), dtype=bool)
     y, x = np.ogrid[-radius: radius, -radius: radius]
 
     if outline:
@@ -94,7 +92,6 @@ def get_array_subtraction(
     If output is supplied it will be fed directly into it, else,
     it will just return a new array.
     """
-
     o1_low = offset[0]
     o2_low = offset[1]
 
@@ -154,6 +151,39 @@ def get_array_subtraction(
             - array_two[b1_low: b1_high, b2_low: b2_high]
         )
 
+# def get_array_subtraction(
+#     array_one: np.ndarray,
+#     array_two: np.ndarray,
+#     offset: tuple[int, int],
+#     output: Optional[np.ndarray] = None,
+# ) -> Optional[np.ndarray]:
+#     """Makes offsetted subtractions for A1 - A2 independent of sizes
+
+#     If output is supplied it will be fed directly into it, else,
+#     it will just return a new array.
+#     """
+#     y_off, x_off = offset
+#     h1, w1 = array_one.shape
+#     h2, w2 = array_two.shape
+
+#     y1_start, y1_end = max(0, y_off), min(h1, y_off + h2)
+#     x1_start, x1_end = max(0, x_off), min(w1, x_off + w2)
+
+#     if y1_start >= y1_end or x1_start >= x1_end:
+#         return array_one.copy() if output is None else None
+
+#     y2_start, y2_end = y1_start - y_off, y1_end - y_off
+#     x2_start, x2_end = x1_start - x_off, x1_end - x_off
+
+#     slice1 = (slice(y1_start, y1_end), slice(x1_start, x1_end))
+#     slice2 = (slice(y2_start, y2_end), slice(x2_start, x2_end))
+
+#     if output is None:
+#         result = array_one.copy()
+#         result[slice1] -= array_two[slice2]
+#         return result
+#     else:
+#         output[slice1] = array_one[slice1] - array_two[slice2]
 
 class CellItem:
 
@@ -214,7 +244,6 @@ class CellItem:
             )
 
     def do_analysis(self):
-
         """
         do_analysis updates the values of the features-dict.
         Depending one what type of cell item it is (Blob, Background, Cell)
@@ -226,70 +255,46 @@ class CellItem:
         Default initiation of a cell item will automatically set the type.
 
         The function takes no arguments
-
         """
-
-        feature_data: dict[MEASURES, Any] = self.features.data
-        if self.filter_array is None or len(self._features_key_list) == 0:
+        # FIXME: Replace print statements with logging and make them more informative
+        feature_data: dict[MEASURES, Any] = self.features.data  # ty: ignore[invalid-assignment]
+        if self.filter_array is None or not self._features_key_list:
             return
 
-        feature_array = None
-        feature_data[MEASURES.Count] = self.filter_array.sum()
-
-        feature_data[MEASURES.Sum] = self.grid_array[
-            np.where(self.filter_array)
-        ].sum()
-
-        if (
-            feature_data[MEASURES.Count] == feature_data[MEASURES.Sum]
-            or feature_data[MEASURES.Count] == 0
-        ):
-            if feature_data[MEASURES.Count] == 0:
-                print("GCdissect", self._identifier, "No blob")
-            else:
-                print("GCdissect", self._identifier, "No background")
+        masked_values = self.grid_array[self.filter_array > 0]
+        if (n := masked_values.size) == 0:
+            print(f"GCdissect {self._identifier} No blob")
             feature_data.clear()
+            return
 
-        else:
+        if n == (total_sum := masked_values.sum()):
+            print(f"GCdissect {self._identifier} No background")
+            feature_data.clear()
+            return
 
-            feature_data[MEASURES.Mean] = (
-                feature_data[MEASURES.Sum] / feature_data[MEASURES.Count]
-            )
+        feature_data[MEASURES.Count] = n
+        feature_data[MEASURES.Sum] = total_sum
+        feature_data[MEASURES.Mean] = total_sum / n
 
-            if (
-                MEASURES.Median in self._features_key_list
-                or MEASURES.IQR in self._features_key_list
-                or MEASURES.IQR_Mean in self._features_key_list
-            ):
-                feature_array = self.grid_array[np.where(self.filter_array)]
+        if MEASURES.Median in self._features_key_list:
+            feature_data[MEASURES.Median] = bn.median(masked_values)
 
-            if MEASURES.Median in self._features_key_list:
-                feature_data[MEASURES.Median] = np.median(feature_array)
+        if {MEASURES.IQR, MEASURES.IQR_Mean} & set(self._features_key_list):
+            try:
+                feature_data[MEASURES.IQR] = quantiles_stable(masked_values)
+                feature_data[MEASURES.IQR_Mean] = mid50_mean(masked_values)
+            except (ValueError, TypeError, Exception):
+                feature_data[MEASURES.IQR] = None
+                feature_data[MEASURES.IQR_Mean] = None
 
-            if (
-                MEASURES.IQR in self._features_key_list
-                or MEASURES.IQR_Mean in self._features_key_list
-            ):
-                feature_data[MEASURES.IQR] = quantiles_stable(feature_array)
-                # mquantiles(feature_array, prob=[0.25, 0.75])
+        if MEASURES.Centroid in self._features_key_list:
+            try:
+                feature_data[MEASURES.Centroid] = center_of_mass(self.filter_array)
+            except Exception:
+                feature_data[MEASURES.Centroid] = None
 
-                try:
-                    feature_data[MEASURES.IQR_Mean] = iqr_mean(feature_array)
-                    # tmean(feature_array, feature_data['IQR'])
-                except Exception:
-                    feature_data[MEASURES.IQR_Mean] = None
-                    feature_data[MEASURES.IQR] = None
-
-            if MEASURES.Centroid in self._features_key_list:
-                try:
-                    feature_data[MEASURES.Centroid] = center_of_mass(
-                        self.filter_array,
-                    )
-                except Exception:
-                    feature_data[MEASURES.Centroid] = None
-
-            if MEASURES.Perimeter in self._features_key_list:
-                feature_data[MEASURES.Perimeter] = None
+        if MEASURES.Perimeter in self._features_key_list:
+            feature_data[MEASURES.Perimeter] = None
 
 
 def get_onion_values(
@@ -565,153 +570,83 @@ class Blob(CellItem):
         Optional argument:
 
         @use_fallback_detection     If set, overrides the instance default
-
         @max_change_threshold       The max sum of differentiating pixels
                                     devided by old filters sum of pixels.
+        @remember_filter            If set, the current filter will be saved
+                                    as old_filter for the next detection
+        @remember_trash             If set, the current trash will be saved
+                                    as old_trash for the next detection
         """
-
-        if self.filter_array is not None:
-
-            self.trash_array = np.zeros(
-                self.filter_array.shape,
-                dtype=bool,
-            )
+        if getattr(self, 'filter_array', None) is not None:
+            self.trash_array = np.zeros(self.filter_array.shape, dtype=bool)
 
         if detect_type is None:
-
             self.detect_function()
+        elif detect_type is BlobDetectionTypes.ITERATIVE:
+            self.iterative_threshold_detect()
+        elif detect_type is BlobDetectionTypes.THRESHOLD:
+            self.threshold_detect()
         else:
+            self.default_detect()
 
-            if detect_type is BlobDetectionTypes.ITERATIVE:
-                self.iterative_threshold_detect()
+        if getattr(self, 'trash_array', None) is None and self.filter_array is not None:
+            self.trash_array = np.zeros(self.filter_array.shape, dtype=bool)
 
-            elif detect_type is BlobDetectionTypes.THRESHOLD:
-                self.threshold_detect()
-
-            else:
-                self.default_detect()
-
-        if self.trash_array is None:
-            self.trash_array = np.zeros(
-                self.filter_array.shape,
-                dtype=bool,
-            )
-
-        if self.old_filter is not None:
-
+        if getattr(self, 'old_filter', None) is not None:
             if self.filter_array.sum() == 0:
                 self.filter_array = self.old_filter.copy()
 
+            old_sum = self.old_filter.sum()
+            sqrt_of_oldsum = old_sum ** 0.5
             blob_diff = (self.old_filter ^ self.filter_array).sum()
 
-            sqrt_of_oldsum = self.old_filter.sum() ** 0.5
-
-            if blob_diff / sqrt_of_oldsum > max_change_threshold:
-
-                bad_diff = False
-
-                if self.filter_array.sum() == 0 or self.old_filter.sum() == 0:
+            if sqrt_of_oldsum > 0 and (blob_diff / sqrt_of_oldsum) > max_change_threshold:
+                if self.filter_array.sum() <= 0 or old_sum <= 0:
                     bad_diff = True
-
                 else:
-
                     old_com = center_of_mass(self.old_filter)
                     new_com = center_of_mass(self.filter_array)
 
-                    dim_1_offset = int(old_com[0] - new_com[0])
-                    dim_2_offset = int(old_com[1] - new_com[1])
+                    d1 = int(old_com[0] - new_com[0])
+                    d2 = int(old_com[1] - new_com[1])
 
-                    if dim_1_offset > 0 and dim_2_offset > 0:
+                    def get_slice(offset: int):
+                        if offset > 0:
+                            return slice(offset, None), slice(None, -offset)
+                        elif offset < 0:
+                            return slice(None, offset), slice(-offset, None)
+                        else:
+                            return slice(None), slice(None)
 
-                        diff_filter = (
-                            self.old_filter[dim_1_offset:, dim_2_offset:]
-                            ^ self.filter_array[:-dim_1_offset, :-dim_2_offset]
-                        )
+                    old_s1, new_s1 = get_slice(d1)
+                    old_s2, new_s2 = get_slice(d2)
 
-                    elif dim_1_offset < 0 and dim_2_offset < 0:
+                    diff_filter = (
+                        self.old_filter[old_s1, old_s2] ^
+                        self.filter_array[new_s1, new_s2]
+                    )
 
-                        diff_filter = (
-                            self.old_filter[: dim_1_offset, : dim_2_offset]
-                            ^ self.filter_array[-dim_1_offset:, -dim_2_offset:]
-                        )
-
-                    elif dim_1_offset > 0 > dim_2_offset:
-
-                        diff_filter = (
-                            self.old_filter[dim_1_offset:, : dim_2_offset]
-                            ^ self.filter_array[:-dim_1_offset, -dim_2_offset:]
-                        )
-
-                    elif dim_1_offset < 0 < dim_2_offset:
-
-                        diff_filter = (
-                            self.old_filter[: dim_1_offset, dim_2_offset:]
-                            ^ self.filter_array[-dim_1_offset:, :-dim_2_offset]
-                        )
-
-                    elif dim_1_offset == 0 and dim_2_offset < 0:
-
-                        diff_filter = (
-                            self.old_filter[:, : dim_2_offset]
-                            ^ self.filter_array[:, -dim_2_offset:]
-                        )
-
-                    elif dim_1_offset == 0 and dim_2_offset > 0:
-
-                        diff_filter = (
-                            self.old_filter[:, dim_2_offset:]
-                            ^ self.filter_array[:, :-dim_2_offset]
-                        )
-
-                    elif dim_1_offset < 0 and dim_2_offset == 0:
-
-                        diff_filter = (
-                            self.old_filter[: dim_1_offset, :]
-                            ^ self.filter_array[-dim_1_offset:, :]
-                        )
-
-                    elif dim_1_offset > 0 == dim_2_offset:
-                        diff_filter = (
-                            self.old_filter[dim_1_offset:, :]
-                            ^ self.filter_array[:-dim_1_offset, :]
-                        )
-
-                    else:
-                        diff_filter = self.old_filter ^ self.filter_array
-
-                    blob_diff = diff_filter.sum()
-
-                    if blob_diff / sqrt_of_oldsum > max_change_threshold:
-
-                        bad_diff = True
+                    bad_diff = (diff_filter.sum() / sqrt_of_oldsum) > max_change_threshold
 
                 if bad_diff:
-
                     self.filter_array = self.old_filter.copy()
-
-                    if self.old_trash is not None:
-
+                    if getattr(self, 'old_trash', None) is not None:
                         self.trash_array = self.old_trash.copy()
 
-        if remember_filter:
-
+        if remember_filter and self.filter_array is not None:
             self.old_filter = self.filter_array.copy()
 
-        if remember_trash:
+        if remember_trash and getattr(self, 'trash_array', None) is not None:
+            self.old_trash = self.trash_array.copy()
 
-            if self.trash_array is not None:
-
-                self.old_trash = self.trash_array.copy()
 
     def iterative_threshold_detect(self) -> None:
-
         grid_array = gaussian_filter(self.grid_array, 2)
 
         threshold = 1
         self.threshold_detect(im=grid_array, threshold=threshold)
 
         while self.get_circularity() > 10 and threshold < 124:
-            threshold *= 1.5
             self.threshold_detect(im=grid_array, threshold=threshold)
 
     def threshold_detect(
@@ -733,29 +668,23 @@ class Blob(CellItem):
         """
 
         if self.threshold is None or threshold is not None:
-
             self.set_threshold(im=im, threshold=threshold)
 
         if im is None:
-
             im = self.grid_array
 
         if color_logic is None:
-
             color_logic = self.image_color_logic
 
         self.filter_array[...] = False
 
         if color_logic == "inv":
-
-            self.filter_array[np.where(im < self.threshold)] = True
-
+            self.filter_array[im < self.threshold] = True
         else:
+            self.filter_array[im > self.threshold] = True
 
-            self.filter_array[np.where(im > self.threshold)] = True
 
     def manual_detect(self, center: tuple[float, float], radius: float) -> None:
-
         self.filter_array[...] = False
 
         stencil = get_round_kernel(int(np.round(radius)))
@@ -822,87 +751,58 @@ class Blob(CellItem):
             self.BLOB_RECIPE.analyse(self.grid_array, self.filter_array)
             self.keep_best_blob()
 
-    def get_candidate_blob_ranks(self):
-        label_array, number_of_labels = label(self.filter_array)
-        qualities = {}
-        centre_of_masses = {}
+    @staticmethod
+    @njit(cache=True, boundscheck=False)
+    def get_blob_lut(labeled: np.ndarray, num_labels: int) -> np.ndarray:
+        rows, cols = labeled.shape
+        n = num_labels
+        # 0: background, 1: keep, 2: trash
+        lut = np.zeros(n + 1, dtype=np.uint8)
+        # 0: area, 1: min_y, 2: max_y, 3: min_x, 4: max_x, 5: sum_y, 6: sum_x, 7: quality
+        stats = np.zeros((n, 8), dtype=np.float64)
+        stats[:, 1] = rows
+        stats[:, 3] = cols
 
-        if number_of_labels > 0:
-            for label_value in range(1, number_of_labels + 1):
+        for i in range(rows):
+            for j in range(cols):
+                lbl = labeled[i, j]
+                if lbl > 0:
+                    idx = lbl - 1
+                    stats[idx, 0] += 1
+                    stats[idx, 1] = min(stats[idx, 1], i)
+                    stats[idx, 2] = max(stats[idx, 2], i)
+                    stats[idx, 3] = min(stats[idx, 3], j)
+                    stats[idx, 4] = max(stats[idx, 4], j)
+                    stats[idx, 5] += i
+                    stats[idx, 6] += j
 
-                current_label_filter = label_array == label_value
+        for idx in range(n - 1, -1, -1):
+            ext_y = stats[idx, 2] - stats[idx, 1] + 1
+            ext_x = stats[idx, 4] - stats[idx, 3] + 1
+            min_ext = min(ext_y, ext_x)
+            max_ext = max(ext_y, ext_x)
+            stats[idx, 7] = stats[idx, 0] * min_ext / max_ext if max_ext > 0 else 0
 
-                if current_label_filter.sum() == 0:
-                    continue
+        q_order = np.argsort(stats[:, 7])[::-1]
+        best_quality_label = q_order[0] + 1
 
-                centre_of_masses[label_value] = center_of_mass(
-                    current_label_filter,
-                )
+        if not stats[:, 7].any():
+            return lut
 
-                area = np.sum(current_label_filter)
+        lut[best_quality_label] = 1
+        for idx in q_order[1:]:
+            cy = int(round(stats[idx, 5] / stats[idx, 0]))
+            cx = int(round(stats[idx, 6] / stats[idx, 0]))
+            lut[idx + 1] = 1 if lut[labeled[cy, cx]] == 1 else 2
 
-                dim_extents = [-1, -1]
-                for dim in range(2):
-                    over_axis_sum = np.where(np.sum(
-                        current_label_filter,
-                        axis=dim,
-                    ) > 0)
-                    dim_extents[dim] = (
-                        max(*over_axis_sum) - min(*over_axis_sum) + 1.0
-                    )
+        return lut
 
-                qualities[label_value] = (
-                    area * min(dim_extents) / max(dim_extents)
-                )
-
-        return number_of_labels, qualities, centre_of_masses, label_array
-
-    # noinspection PyTypeChecker
     def keep_best_blob(self) -> None:
         """Evaluates all blobs detected and keeps the best one"""
-
-        (
-            _,
-            qualities,
-            centre_of_masses,
-            label_array
-        ) = self.get_candidate_blob_ranks()
-
-        if qualities:
-
-            quality_order = tuple(zip(*sorted(
-                iter(qualities.items()),
-                key=operator.itemgetter(1),
-            )))[0][::-1]
-            best_quality_label = quality_order[0]
-
-            self.filter_array = label_array == best_quality_label
-
-            composite_blob = [best_quality_label]
-            composite_trash = []
-
-            for item_label in quality_order[1:]:
-
-                if self.filter_array[
-                    tuple(map(
-                        int,
-                        list(map(round, centre_of_masses[item_label]))
-                    ))
-                ]:
-                    composite_blob.append(item_label)
-
-                else:
-                    composite_trash.append(item_label)
-
-            self.filter_array = np.in1d(
-                label_array, np.array(composite_blob)).reshape(
-                    self.filter_array.shape,
-                )
-
-            self.trash_array = np.in1d(
-                label_array, np.array(composite_trash)).reshape(
-                    self.filter_array.shape,
-                )
+        labeled, labels = label(self.filter_array)
+        lut = self.get_blob_lut(labeled, labels)
+        self.filter_array = lut[labeled] == 1
+        self.trash_array = lut[labeled] == 2
 
 
 class Background(CellItem):
@@ -926,22 +826,14 @@ class Background(CellItem):
 
         Function takes no arguments (**kwargs just there to keep interface)
         """
-        if self.blob and self.blob.filter_array is not None:
-            self.filter_array[...] = True
-            self.filter_array[np.where(self.blob.filter_array)] = False
-            self.filter_array[np.where(self.blob.trash_array)] = False
-            self.filter_array = binary_erosion(
-                self.filter_array,
-                iterations=3,
-                border_value=1
-            )
-
-        else:
-            print("BG", self._identifier, "no blob")
+        if self.blob is None or self.blob.filter_array is None:
+            print(f"BG {self._identifier}: no blob data available.")
+            return
+        self.filter_array[...] = ~(self.blob.filter_array | self.blob.trash_array)
+        self.filter_array = binary_erosion(self.filter_array, iterations=3, border_value=1)
 
 
 class Cell(CellItem):
-
     def __init__(
         self,
         identifier,

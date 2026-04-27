@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 import scanomatic.image_analysis.grid_cell_extra as grid_cell_extra
-from scanomatic.generics.maths import mid50_mean as iqr_mean
+from scanomatic.generics.maths import mid50_mean
 from scanomatic.io.logger import get_logger
 from scanomatic.io.paths import Paths
 from scanomatic.models.analysis_model import COMPARTMENTS, VALUES
@@ -79,60 +79,63 @@ class GridCell:
             self.position[1]
         ].astype(int)
 
+    # def set_grid_coordinates(self, grid_cell_corners):
+    #     """
+    #     Sets grid coordinates by flipping the vertical axis to convert from
+    #     image space (top-down) to a right-handed x-y system.
+    #     """
+    #     row_max_idx = grid_cell_corners.shape[2] - 1
+    #     flipped_row = row_max_idx - self.position[0]
+    #     col = self.position[1]
+    #     self.xy1, self.xy2 = grid_cell_corners[:, :2, flipped_row, col].astype(int)
+
     def set_new_data_source_space(
         self,
         space: VALUES = VALUES.Cell_Estimates,
         bg_sub_source=None,
         polynomial_coeffs=None,
     ):
-        if space is VALUES.Cell_Estimates:
-            if bg_sub_source is not None:
-                feature_array = self.source[np.where(bg_sub_source)]
-                # bg_sub = tmean(
-                #   feature_array,
-                #   mquantiles(feature_array, prob=[0.25, 0.75]),
-                # )
-                bg_sub = iqr_mean(feature_array)
-                if not np.isfinite(bg_sub):
-                    bg_sub = np.mean(feature_array)
-                    GridCell._logger.warning(
-                        "{0} caused background mean ({1}) due to inf".format(
-                            self._identifier,
-                            bg_sub,
-                        ),
-                    )
-                self.source = bg_sub - self.source
+        if space is not VALUES.Cell_Estimates:
+            self.push_source_data_to_cell_items()
+            return
 
-            self.source[self.source < self.MIN_THRESHOLD] = self.MIN_THRESHOLD
+        if bg_sub_source is not None:
+            self._apply_background_subtraction(bg_sub_source)
 
-            if polynomial_coeffs is not None:
-                self.source = np.polyval(polynomial_coeffs, self.source)
+        np.maximum(self.source, self.MIN_THRESHOLD, out=self.source)
 
-            self._set_max_value_filter()
+        if polynomial_coeffs is not None:
+            self.source = np.polyval(polynomial_coeffs, self.source)
 
+        self._set_max_value_filter()
         self.push_source_data_to_cell_items()
 
+    def _apply_background_subtraction(self, bg_sub_source):
+        """Extracted helper to keep the main flow clean."""
+        feature_array = self.source[bg_sub_source > 0]
+        bg_sub = mid50_mean(feature_array)
+
+        if not np.isfinite(bg_sub):
+            bg_sub = np.mean(feature_array)
+            GridCell._logger.warning("%s caused background mean (%s) due to inf", self._identifier, bg_sub)
+
+        np.subtract(bg_sub, self.source, out=self.source)
+
     def _set_max_value_filter(self):
-
         max_detect_filter = self.source > self.MAX_THRESHOLD
+        if self._adjustment_warning == max_detect_filter.any():
+            return
 
-        if self._adjustment_warning != max_detect_filter.any():
-            self._adjustment_warning = not self._adjustment_warning
-            if self._adjustment_warning:
-                self._logger.warning(
-                    "{0} got {1} pixel-values overshooting {2}.".format(
-                        self._identifier, max_detect_filter.sum(),
-                        self.MAX_THRESHOLD
-                    ) +
-                    " Further warnings for this colony suppressed."
-                )
-            else:
-                self._logger.info(
-                    "{0} no longer have pixels that reach {1} depth.".format(
-                        self._identifier,
-                        self.MAX_THRESHOLD,
-                    ),
-                )
+        self._adjustment_warning = not self._adjustment_warning
+        if self._adjustment_warning:
+            self._logger.warning(
+                "%s got %d pixel-values overshooting %s. Further warnings for this colony suppressed.",
+                self._identifier, max_detect_filter.sum(),
+                self.MAX_THRESHOLD
+            )
+        else:
+            self._logger.info("%s no longer have pixels that reach %s depth.", self._identifier, self.MAX_THRESHOLD)
+
 
     def push_source_data_to_cell_items(self):
         for item_names in self._analysis_items:

@@ -1,8 +1,9 @@
+from functools import partial
 import os
 from subprocess import call
 from threading import Thread
 from time import sleep
-
+from contextlib import suppress
 import numpy as np
 
 from scanomatic.io.first_pass_results import CompilationResults
@@ -17,6 +18,7 @@ from scanomatic.models.compile_project_model import CompileImageAnalysisModel
 from scanomatic.models.factories.analysis_factories import (
     AnalysisFeaturesFactory
 )
+from scanomatic.util.analysis import produce_grid_image
 
 from . import grid_array
 from .grayscale import get_grayscale
@@ -27,17 +29,10 @@ from .grayscale_detection import is_valid_grayscale
 def _get_init_features(
     grid_arrays: dict[int, grid_array.GridArray],
 ) -> AnalysisFeatures:
-    def length_needed(keys):
-
-        return max(keys) + 1
-
-    size = length_needed(list(grid_arrays.keys())) if grid_arrays else 0
+    size = (max(grid_arrays.keys()) + 1) if grid_arrays else 0
     return AnalysisFeaturesFactory.create(
         shape=(size,),
-        data=tuple(
-            grid_arrays[i].features if i in grid_arrays else None for i in
-            range(size)
-        ),
+        data=tuple(grid_arrays[i].features if i in grid_arrays else None for i in range(size)),
         index=0,
     )
 
@@ -80,107 +75,62 @@ class ProjectImage:
         grid_arrays = {}
 
         for index, pinning in enumerate(self._analysis_model.pinning_matrices):
+            if not pinning:
+                self._logger.info("Plate %s not analysed because lacks pinning", index)
+                continue
+            elif not self._plate_is_analysed(index):
+                self._logger.info("Plate %s not analysed because suppressing non-focal positions", index)
+                continue
 
-            if pinning and self._plate_is_analysed(index):
-
-                grid_arrays[index] = grid_array.GridArray(
-                    index, pinning,
-                    self._analysis_model,
-                )
-
-            else:
-
-                if pinning:
-
-                    self._logger.info(
-                        f"Skipping plate {index} because suppressing non-focal positions",  # noqa: E501
-                    )
-
-                else:
-                    self._logger.info(
-                        f"Plate {index} not analysed because lacks pinning",
-                    )
+            grid_arrays[index] = grid_array.GridArray(index, pinning, self._analysis_model)
 
         return grid_arrays
 
     @property
     def image_inclusions(self):
         all_images = set(self._first_pass_results.keys())
-        highest_index_plus_one = 0 if not all_images else max(all_images) + 1
+        highest_index = 0 if not all_images else max(all_images)
 
         if self._analysis_model.plate_image_inclusion is None:
-
-            self._logger.info(
-                "No plate specific image inclusion assumes all plate included for images {0}".format(  # noqa: E501
-                    all_images,
-                ),
-            )
+            self._logger.info("No plate specific image inclusion assumes all plate included for images %s", all_images)
             return {k: all_images for k in self._grid_arrays}
 
-        else:
 
-            ret = {}
-            platewise_len = len(self._analysis_model.plate_image_inclusion)
+        ret = {}
+        platewise_len = len(self._analysis_model.plate_image_inclusion)
 
-            for i in range(
-                max(list(self._grid_arrays.keys()), platewise_len)
-            ):
-                if i not in self._grid_arrays or i < 0 or i >= platewise_len:
-                    if platewise_len > i > 0:
-                        if (
-                            self._analysis_model.plate_image_inclusion[i]
-                            is not None
-                        ):
-                            self._logger.warning(
-                                f"There's a image selection for plate index {i}, but this plate does not exist",  # noqa: E501
-                            )
-                    else:
-                        self._logger.warning(
-                            f"Plate index {i} has no instructions for inclusion of images, assuming all included",  # noqa: E501
-                        )
-                        ret[i] = all_images
-
+        # FIXME: This call to `max` looks broken
+        for i in range(max(list(self._grid_arrays.keys()), platewise_len)):
+            if i not in self._grid_arrays or i < 0 or i >= platewise_len:
+                if platewise_len > i > 0:
+                    if self._analysis_model.plate_image_inclusion[i] is not None:
+                        self._logger.warning("There's a image selection for plate index %s, but this plate does not exist", i)
                 else:
-                    ret[i] = set()
-                    instruction = (
-                        self._analysis_model.plate_image_inclusion[i]
-                    )
-                    instruction = [
-                        [val.strip() for val in part.strip().split("-")]
-                        for part in instruction.split(",")
-                    ]
+                    self._logger.warning("Plate index %s has no instructions for inclusion of images, assuming all included", i)
+                    ret[i] = all_images
+                continue
 
-                    if not all(len(part) == 2 for part in instruction):
-                        self._logger.error(
-                            "Malformed plate inclusion settings: '{0}'".format(
-                                self._analysis_model.plate_image_inclusion[i]
-                            )
-                            + " Plate excluded from analysis"
-                        )
+            ret[i] = set()
+            instruction = self._analysis_model.plate_image_inclusion[i]
+            instruction = [
+                [val.strip() for val in part.strip().split("-")]
+                for part in instruction.split(",")
+            ]
 
-                        continue
+            if not all(len(part) == 2 for part in instruction):
+                self._logger.error("Malformed plate inclusion settings: '%s'. Plate excluded from analysis", self._analysis_model.plate_image_inclusion[i])
+                continue
 
-                    try:
-                        instruction = [
-                            (
-                                int(start) if start else 0, int(end) + 1
-                                if end else highest_index_plus_one
-                            )
-                            for start, end in instruction
-                        ]
-                    except ValueError:
-                        self._logger.error(
-                            "Plate inclusion setting contains non-ints {0}".format(  # noqa: E501
-                                instruction
-                            )
-                            + " Plate excluded from analysis"
-                        )
-                        continue
+            try:
+                instruction = [(int(start or 0), int(end or highest_index) + 1) for start, end in instruction]
+            except ValueError:
+                self._logger.error("Plate inclusion setting contains non-ints '%s'. Plate excluded from analysis", instruction)
+                continue
+            else:
+                for start, end in instruction:
+                    ret[i].update(list(range(start, end)))
 
-                    for start, end in instruction:
-                        ret[i].update(list(range(start, end)))
-
-            return ret
+        return ret
 
     def _plate_is_analysed(self, index) -> bool:
         return (
@@ -215,200 +165,90 @@ class ProjectImage:
         )
 
     def set_grid_plates(self, plate_indices, image_model):
-
         if image_model is None:
             self._logger.critical("No image model to grid on")
             return False
 
         self.load_image(image_model.image.path)
 
-        if self._im_loaded:
+        if not self._im_loaded:
+            self._logger.warning("No gridding done for plates %s because image not loaded.", plate_indices)
+            return True
 
-            threads = set()
+        self._logger.info("Setting grids for plates %s using image index %s", plate_indices, image_model.image.index)
 
-            self._logger.info(
-                "Setting grids for plates {0} using image index {1}".format(
-                    plate_indices,
-                    image_model.image.index,
-                ),
-            )
+        callback = partial(
+            produce_grid_image,
+            path=self._analysis_model.output_directory,
+            compilation=self._analysis_model.compilation,
+        )
+        grid_jobs = []
+        for index in plate_indices:
+            try:
+                plate_model = next(model for model in image_model.fixture.plates if model.index == index)
+            except StopIteration:
+                self._logger.error("No plate model found with index %s", index)
+                continue
 
-            for index in plate_indices:
+            if (im := self.get_im_section(plate_model)) is None:
+                self._logger.error("Plate model %s could not be used to slice image", plate_model)
+                continue
 
-                plate_models = [
-                    plate_model for plate_model in image_model.fixture.plates
-                    if plate_model.index == index
-                ]
-                if plate_models:
-                    plate_model = plate_models[0]
+            try:
+                offset = self._analysis_model.grid_model.gridding_offsets[index]  # ty: ignore[not-subscriptable]
+            except (IndexError, AttributeError, TypeError):
+                job = Thread(
+                    target=self._grid_arrays[index].detect_grid,
+                    args=(im,),
+                    kwargs={'analysis_directory': self._analysis_model.output_directory}
+                )
+                job.start()
+                grid_jobs.append((job, index))
+            else:
+                if (reference_folder := self._analysis_model.grid_model.reference_grid_folder):
+                    output_dir = os.path.dirname(self._analysis_model.output_directory)
+                    reference_folder = os.path.join(output_dir, reference_folder)
                 else:
-                    self._logger.error(
-                        "Expected to find a plate model with index {0}, but only have {1}".format(  # noqa: E501
-                            index,
-                            [
-                                plate_model.index for plate_model in
-                                image_model.fixture.plates
-                            ],
-                        ),
-                    )
-                    continue
+                    reference_folder = self._analysis_model.output_directory
 
-                im = self.get_im_section(plate_model)
-
-                if im is None:
-                    self._logger.error(
-                        "Plate model {0} could not be used to slice image".format(  # noqa: E501
-                            plate_model,
-                        )
-                    )
-                    continue
-
-                if (
-                    self._analysis_model.grid_model.gridding_offsets
-                    is not None
-                    and index < len(
-                        self._analysis_model.grid_model.gridding_offsets
-                    )
-                    and self._analysis_model.grid_model.gridding_offsets[
-                        index
-                    ]
+                if self._grid_arrays[index].set_grid(
+                    im,
+                    analysis_directory=(self._analysis_model.output_directory),
+                    offset=offset,
+                    grid=os.path.join(reference_folder, Paths().grid_pattern.format(index + 1)),
                 ):
-
-                    reference_folder = (
-                        self._analysis_model.grid_model.reference_grid_folder
-                    )
-                    if reference_folder:
-                        reference_folder = os.path.join(
-                            os.path.dirname(
-                                self._analysis_model.output_directory,
-                            ),
-                            reference_folder,
-                        )
-                    else:
-                        reference_folder = self._analysis_model.output_directory
-
-                    if not self._grid_arrays[index].set_grid(
-                        im,
-                        analysis_directory=(
-                            self._analysis_model.output_directory
-                        ),
-                        offset=(
-                            self._analysis_model.grid_model.gridding_offsets[
-                                index
-                            ]
-                        ),
-                        grid=os.path.join(
-                            reference_folder,
-                            Paths().grid_pattern.format(index + 1),
-                        ),
-                    ):
-
-                        self._logger.error(
-                            "Could not use previous gridding with offset",
-                        )
-
+                    grid_jobs.append((None, index))
                 else:
+                    self._logger.error("Could not use previous gridding with offset %s for plate %s", offset, index)
 
-                    t = Thread(
-                        target=self._grid_arrays[index].detect_grid,
-                        args=(im,),
-                        kwargs={
-                            "analysis_directory": (
-                                self._analysis_model.output_directory
-                            ),
-                        },
-                    )
-                    t.start()
-                    threads.add(t)
-
-            while threads:
-                threads = set(t for t in threads if t.is_alive())
-                sleep(0.01)
-
-            self._logger.info(
-                "Producing grid images for plates {0} based on image {1} and compilation '{2}'".format(  # noqa: E501
-                    plate_indices,
-                    image_model.image.path,
-                    self._analysis_model.compilation,
-                ),
-            )
-
-            call([
-                "python",
-                "-c",
-                "from scanomatic.util.analysis import produce_grid_images;"
-                " produce_grid_images('{0}', plates={1}, compilation='{2}')".format(  # noqa: E501
-                    self._analysis_model.output_directory,
-                    plate_indices,
-                    self._analysis_model.compilation,
-                ),
-            ])
-        else:
-
-            self._logger.warning(
-                "No gridding done for plates {0} because image not loaded.".format(  # noqa: E501
-                    plate_indices,
-                ),
-            )
-
+        for job, index in grid_jobs:
+            if job is not None:
+                job.join()
+            Thread(target=callback, kwargs={'plate': index}).start()
         return True
 
-    def load_image(self, path):
+    def load_image(self, path, try_alternative_path=True):
         if path == self._im_path_as_requested:
             self._logger.info("Image was already loaded")
             return
-
-        try:
-
-            self.im = load_image_to_numpy(
-                path,
-                IMAGE_ROTATIONS.Portrait,
-                dtype=np.uint8,
-            )
+        with suppress(TypeError, IOError):
+            self.im = load_image_to_numpy(path, IMAGE_ROTATIONS.Portrait, dtype=np.uint8)
             self._im_loaded = True
-
-        except (TypeError, IOError):
-
+        if self._im_loaded:
+            self._logger.info("Image loaded")
+            self._im_path_as_requested = path
+            # Convert to grayscale if needed, using standard luminosity method
+            if self.im.ndim == 3:
+                self.im = np.dot(self.im[..., :3], [0.299, 0.587, 0.144])
+        elif try_alternative_path:
             alt_path = os.path.join(
                 os.path.dirname(self._analysis_model.compilation),
                 os.path.basename(path),
             )
-
-            self._logger.warning(
-                "Failed to load image at '{0}', trying '{1}'.".format(
-                    path,
-                    alt_path,
-                ),
-            )
-            try:
-
-                self.im = load_image_to_numpy(
-                    alt_path,
-                    IMAGE_ROTATIONS.Portrait,
-                    dtype=np.uint8,
-                )
-                self._im_loaded = True
-
-            except (TypeError, IOError):
-
-                self._im_loaded = False
-
-        if self._im_loaded:
-            self._logger.info("Image loaded")
-            self._im_path_as_requested = path
+            self._logger.warning("Failed to load image at '%s', trying '%s'.", path, alt_path)
+            self.load_image(alt_path, try_alternative_path=False)
         else:
             self._logger.error("Failed to load image")
-
-        self.validate_rotation()
-        self._convert_to_grayscale()
-
-    def _convert_to_grayscale(self):
-        if self.im.ndim == 3:
-            self.im = np.dot(self.im[..., :3], [0.299, 0.587, 0.144])
-
-    def validate_rotation(self):
-
-        pass
 
     @property
     def orientation(self) -> IMAGE_ROTATIONS:
@@ -423,73 +263,21 @@ class ProjectImage:
             return IMAGE_ROTATIONS.Landscape
 
     def get_im_section(self, plate_model, im=None):
-        def _flip_axis(a, b):
 
-            return b, a
-
-        def _bound(bounds, a, b):
-
-            def bounds_check(bound, val):
-
-                if 0 <= val < bound:
-                    return val
-                elif val < 0:
-                    return 0
-                else:
-                    return bound - 1
-
-            return (
-                (
-                    bounds_check(bounds[0], a[0]),
-                    bounds_check(bounds[0], a[1])
-                ),
-                (
-                    bounds_check(bounds[1], b[0]),
-                    bounds_check(bounds[1], b[1])
-                ),
-            )
-
-        if not im:
-            if self._im_loaded:
-                im = self.im
-            else:
-                return
+        im = im if im is not None else self.im if self._im_loaded else None
+        if im is None:
+            return
 
         x = sorted((plate_model.x1, plate_model.x2))
         y = sorted((plate_model.y1, plate_model.y2))
-
         if self.orientation == IMAGE_ROTATIONS.Landscape:
-            x, y = _flip_axis(x, y)
-
-        y, x = _bound(im.shape, y, x)
+            x, y = y, x
+        y = tuple(np.clip(y, 0, im.shape[0] - 1))
+        x = tuple(np.clip(x, 0, im.shape[1] - 1))
 
         # In images, the first dimension is typically the y-axis
         section = im[y[0]: y[1], x[0]: x[1]]
-
-        return self._flip_short_dimension(section, im.shape)
-
-    @staticmethod
-    def _flip_short_dimension(section, im_shape):
-
-        short_dim = [p == min(im_shape) for
-                     p in im_shape].index(True)
-
-        def get_slicer(idx):
-            if idx == short_dim:
-                # noinspection PyTypeChecker
-                return slice(None, None, -1)
-            else:
-                # noinspection PyTypeChecker
-                return slice(None)
-
-        slicer = []
-        for i in range(len(im_shape)):
-            slicer.append(get_slicer(i))
-
-        return section[slicer]
-
-    def _set_current_grid_move(self, d1, d2):
-        self._grid_corrections = np.array((d1, d2))
+        return np.flip(section, axis=np.argmin(section.shape))
 
     def clear_features(self):
         for grid_arr in self._grid_arrays.values():
@@ -497,17 +285,17 @@ class ProjectImage:
 
     def analyse(self, image_model: CompileImageAnalysisModel):
         self.load_image(image_model.image.path)
-        self._logger.info("Image loaded")
         if self._im_loaded is False:
+            self._logger.warning("Image could not be loaded, skipping analysis")
             self.clear_features()
             return
 
+        self._logger.info("Image loaded")
+        grayscale = get_grayscale(image_model.fixture.grayscale.name)
+
         if (
             not image_model.fixture.grayscale.section_values
-            or not is_valid_grayscale(
-                get_grayscale(image_model.fixture.grayscale.name).targets,
-                image_model.fixture.grayscale.section_values,
-            )
+            or not is_valid_grayscale(grayscale.targets, image_model.fixture.grayscale.section_values)
         ):
             self._logger.warning("Not a valid grayscale")
             self.clear_features()
@@ -515,43 +303,26 @@ class ProjectImage:
 
         self.features.index = image_model.image.index
         grid_arrays_processed = set()
-        # threads = set()
+
         for plate in image_model.fixture.plates:
+            if plate.index not in self._grid_arrays:
+                self._logger.info("Skipping plate %s because it is not being analysed", plate.index)
+                continue
 
-            if plate.index in self._grid_arrays:
+            if image_model.image.index not in self._plate_image_inclusion[plate.index]:
+                self._logger.info("Skipping image %s on plate %s due to inclusion settings", image_model.image.index, plate.index)
+                continue
 
-                if (
-                    image_model.image.index not in
-                    self._plate_image_inclusion[plate.index]
-                ):
-                    self._logger.info(
-                        "Skipping image {0} on plate {1} due to inclusion settings".format(  # noqa: E501
-                            image_model.image.index,
-                            plate.index,
-                        ),
-                    )
-                    continue
+            if not self._grid_arrays[plate.index].has_grid:
+                self.set_grid_plates([plate.index], image_model)
 
-                if not self._grid_arrays[plate.index].has_grid:
-                    self.set_grid_plates([plate.index], image_model)
+            grid_arrays_processed.add(plate.index)
+            im = self.get_im_section(plate)
+            grid_arr = self._grid_arrays[plate.index]
+            grid_arr.analyse(im, image_model)
 
-                grid_arrays_processed.add(plate.index)
-                im = self.get_im_section(plate)
-                grid_arr = self._grid_arrays[plate.index]
-                grid_arr.analyse(im, image_model)
-                """
-                t = Thread(target=grid_arr.analyse, args=(im, image_model))
-                t.start()
-                threads.add(t)
-
-        while threads:
-            threads = set(t for t in threads if t.is_alive())
-            sleep(0.01)
-        """
         for index, grid_arr in self._grid_arrays.items():
             if index not in grid_arrays_processed:
                 grid_arr.clear_features()
 
-        self._logger.info(
-            "Image {0} processed".format(image_model.image.index),
-        )
+        self._logger.info("Image %s processed", image_model.image.index)

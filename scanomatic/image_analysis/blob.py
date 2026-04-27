@@ -1,13 +1,9 @@
 import warnings
 
 import numpy as np
-from scipy.ndimage import (  # type: ignore
-    binary_dilation,
-    binary_erosion,
-    gaussian_filter,
-    median_filter
-)
+from scipy.ndimage import gaussian_filter, median_filter
 from skimage import filters as ski_filter  # type: ignore
+from scanomatic.generics.maths import fast_otsu_float64, binary_dilation, binary_erosion, median_filter_3x3
 
 from scanomatic.data_processing.convolution import FilterArray
 
@@ -88,13 +84,9 @@ class AnalysisThresholdOtsu(AnalysisRecipeAbstraction):
 
     def _do(self, im: np.ndarray, filter_array: FilterArray) -> None:
         try:
-            filter_array[...] = (
-                im < ski_filter.threshold_otsu(im) + self._thresholdUnitAdjust
-            )
+            filter_array[...] = im < fast_otsu_float64(im) + self._thresholdUnitAdjust
         except (ValueError, TypeError) as error:
-            warnings.warn(
-                'Otsu method failed. Error was {}'.format(str(error))
-            )
+            warnings.warn('Otsu method failed. Error was {}'.format(str(error)))
             filter_array[...] = False
 
 
@@ -187,9 +179,4 @@ class AnalysisRecipeMedianFilter(AnalysisRecipeAbstraction):
         )
 
     def _do(self, im: np.ndarray, filter_array: FilterArray) -> None:
-        median_filter(
-            im,
-            size=(3, 3),
-            mode="nearest",
-            output=im,
-        )
+        im[...] = median_filter_3x3(im)

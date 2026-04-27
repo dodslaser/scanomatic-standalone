@@ -6,7 +6,53 @@ from scipy import ndimage  # type: ignore
 from skimage import filters as ski_filter  # type: ignore
 
 from scanomatic.data_processing.convolution import FilterArray
+from scanomatic.generics.maths import fast_otsu_uint8, binary_dilation, binary_erosion, binary_propagation
 
+import cv2
+
+# def get_adaptive_threshold(
+#     im,
+#     threshold_filter: Optional[Callable] = None,
+#     segments: int = 60,
+#     sigma: Optional[float] = None,
+#     *args,
+#     **kwargs,
+# ):
+#     """Gives a 2D surface of threshold based on smoothed local measures"""
+
+#     if threshold_filter is None:
+#         threshold_filter = fast_otsu_uint8
+#     if sigma is None:
+#         sigma = np.sqrt(im.size) / 5
+
+#     if segments is None or segments == 5:
+#         # TODO: Hack solution, make nice
+#         segmented_image = np.zeros(im.shape)
+#         segmented_image[im.shape[0] // 4, im.shape[1] // 4] = 1
+#         segmented_image[im.shape[0] // 4, im.shape[1] * 3 // 4] = 1
+#         segmented_image[im.shape[0] * 3 // 4, im.shape[1] // 4] = 1
+#         segmented_image[im.shape[0] * 3 // 4, im.shape[1] * 3 // 4] = 1
+#         segmented_image[im.shape[0] // 2, im.shape[1] // 2] = 1
+#     else:
+#         p = 1 - segments / im.size
+#         segmented_image = (np.random.random(im.shape) > p).astype(np.uint8)
+
+#     labled, labels = _get_sectioned_image(segmented_image)
+#     for label in range(1, labels + 1):
+#         l_filter = labled == label
+#         if l_filter.sum() > 1:
+#             i_slice = im[l_filter]
+#             if i_slice.std() != 0:
+#                 segmented_image[
+#                     binary_dilation(l_filter, iterations=4)
+#                 ] = threshold_filter(i_slice, *args, **kwargs)
+
+#             else:
+#                 segmented_image[
+#                     binary_dilation(l_filter, iterations=4)
+#                 ] = i_slice.mean()
+
+#     return ndimage.gaussian_filter(segmented_image, sigma=sigma)
 
 def get_adaptive_threshold(
     im,
@@ -19,7 +65,7 @@ def get_adaptive_threshold(
     """Gives a 2D surface of threshold based on smoothed local measures"""
 
     if threshold_filter is None:
-        threshold_filter = ski_filter.threshold_otsu
+        threshold_filter = fast_otsu_uint8
     if sigma is None:
         sigma = np.sqrt(im.size) / 5
 
@@ -33,52 +79,105 @@ def get_adaptive_threshold(
         segmented_image[im.shape[0] // 2, im.shape[1] // 2] = 1
     else:
         p = 1 - segments / im.size
-        segmented_image = (np.random.random(im.shape) > p).astype(np.uint8)
+        segmented_image = (np.random.random(im.shape) > p).view(np.uint8)
 
-    labled, labels = _get_sectioned_image(segmented_image)
-    for label in range(1, labels + 1):
+    labled, _ = _get_sectioned_image(segmented_image)
+    objs = ndimage.find_objects(labled)
+
+    for label, slice_tuple in enumerate(objs, start=1):
+        if slice_tuple is None:
+            continue
+
         l_filter = labled == label
-        if l_filter.sum() > 1:
-            i_slice = im[l_filter]
-            if i_slice.std() != 0:
-                segmented_image[
-                    ndimage.binary_dilation(l_filter, iterations=4)
-                ] = threshold_filter(i_slice, *args, **kwargs)
-
-            else:
-                segmented_image[
-                    ndimage.binary_dilation(l_filter, iterations=4)
-                ] = i_slice.mean()
+        i_slice = im[l_filter]
+        i_idx = binary_dilation(l_filter.view(np.uint8), iterations=4)
+        if i_slice.std() != 0:
+            segmented_image[i_idx] = threshold_filter(i_slice, *args, **kwargs)
+        else:
+            segmented_image[i_idx] = i_slice.mean()
 
     return ndimage.gaussian_filter(segmented_image, sigma=sigma)
 
 
+# def _get_sectioned_image(im):
+#     """Sections image in proximity regions for points of interests"""
+
+#     distance_image = ndimage.distance_transform_edt(im == 0)
+#     kernel = np.array([[-1, 2, -1]])
+#     d2 = (
+#         ndimage.convolve(distance_image, kernel)
+#         + ndimage.convolve(distance_image, kernel.T)
+#     )
+#     d2 = binary_dilation(d2 > d2.mean(), border_value=1) == 0
+#     labeled, labels = ndimage.label(d2)
+#     return labeled, labels
+
+
 def _get_sectioned_image(im):
     """Sections image in proximity regions for points of interests"""
-
-    distance_image = ndimage.distance_transform_edt(im == 0)
-    kernel = np.array([[-1, 2, -1]])
-    d2 = (
-        ndimage.convolve(distance_image, kernel)
-        + ndimage.convolve(distance_image, kernel.T)
+    distance_image = cv2.distanceTransform(
+        (im == 0).view(np.uint8),
+        distanceType=cv2.DIST_L2,
+        maskSize=cv2.DIST_MASK_PRECISE,
+        dstType=cv2.CV_64F,
     )
-    d2 = ndimage.binary_dilation(d2 > d2.mean(), border_value=1) == 0
-    labeled, labels = ndimage.label(d2)
-    return labeled, labels
 
+    kernel = np.array([[-1, 2, -1]])
+    c1 = cv2.filter2D(distance_image, ddepth=-1, kernel=kernel)
+    c2 = cv2.filter2D(distance_image, ddepth=-1, kernel=kernel.T)
+    np.add(c1, c2, out=distance_image)
+    np.less(distance_image, distance_image.mean(), out=distance_image)
+
+    d2 = binary_erosion(distance_image, border_value=0)
+    labels, labeled = cv2.connectedComponents(d2.view(np.uint8), connectivity=4)
+    return labeled, labels - 1
+
+# def get_denoise_segments(im, **kwargs) -> FilterArray:
+#     """Filters out small segments"""
+#     erode_im = binary_erosion(im, **kwargs)
+#     reconstruct_im = ndimage.binary_propagation(erode_im, mask=im)
+#     tmp = np.logical_not(reconstruct_im)
+#     erode_tmp = binary_erosion(tmp, **kwargs)
+#     reconstruct_final = np.logical_not(ndimage.binary_propagation(
+#         erode_tmp,
+#         mask=tmp,
+#     ))
+#     return reconstruct_final
 
 def get_denoise_segments(im, **kwargs) -> FilterArray:
     """Filters out small segments"""
-    erode_im = ndimage.binary_erosion(im, **kwargs)
-    reconstruct_im = ndimage.binary_propagation(erode_im, mask=im)
-    tmp = np.logical_not(reconstruct_im)
-    erode_tmp = ndimage.binary_erosion(tmp, **kwargs)
-    reconstruct_final = np.logical_not(ndimage.binary_propagation(
-        erode_tmp,
-        mask=tmp,
-    ))
-    return reconstruct_final
+    clean_fg = binary_erosion(im, **kwargs)
+    clean_fg = binary_propagation(clean_fg, mask=im)
+    clean_bg = binary_erosion(~clean_fg, **kwargs)
+    clean_bg = binary_propagation(clean_bg, mask=~clean_fg)
+    return ~clean_bg
 
+
+# def get_segments_by_size(
+#     im,
+#     min_size: int,
+#     max_size: int = -1,
+#     inplace: bool = True,
+# ) -> Optional[FilterArray]:
+#     """Filters segments by allowed size range"""
+#     if inplace:
+#         out = im
+#     else:
+#         out = im.copy()
+
+#     if max_size == -1:
+#         max_size = im.size
+
+#     labled_im, labels = ndimage.label(im)
+#     sizes = ndimage.sum(im, labled_im, list(range(labels + 1)))
+
+#     mask_sizes = np.logical_or(sizes < min_size, sizes > max_size)
+#     remove_pixels = mask_sizes[labled_im]
+
+#     out[remove_pixels] = False
+
+#     if not inplace:
+#         return out
 
 def get_segments_by_size(
     im,
@@ -87,21 +186,18 @@ def get_segments_by_size(
     inplace: bool = True,
 ) -> Optional[FilterArray]:
     """Filters segments by allowed size range"""
-    if inplace:
-        out = im
-    else:
-        out = im.copy()
-
-    if max_size == -1:
-        max_size = im.size
+    out = im if inplace else im.copy()
+    max_size = max_size if max_size != -1 else im.size
 
     labled_im, labels = ndimage.label(im)
-    sizes = ndimage.sum(im, labled_im, list(range(labels + 1)))
+    if labels == 0:
+        return None if inplace else out
 
-    mask_sizes = np.logical_or(sizes < min_size, sizes > max_size)
-    remove_pixels = mask_sizes[labled_im]
+    sizes = np.bincount(labled_im.ravel())
+    mask = (sizes < min_size) | (sizes > max_size)
+    mask[0] = False
 
-    out[remove_pixels] = False
+    out[mask[labled_im]] = False
 
     if not inplace:
         return out
@@ -235,6 +331,61 @@ def get_votes(data, centers):
     return x_votes.ravel(), y_votes.ravel()
 
 
+# def get_heatmap(data, votes, weights, sigma: float) -> np.ndarray:
+#     """
+#     Get smoothed histogram.
+
+#     A good value for sigma is probably  max(dx, dy) * leeway /sqrt(2) + 0.5.
+#     """
+#     x_data, y_data = data
+#     x_votes, y_votes = votes
+
+#     vote_slice = np.logical_and(
+#         np.logical_and(x_votes >= 0, y_votes >= 0),
+#         np.logical_and(x_votes <= x_data.max(), y_votes <= y_data.max()),
+#     )
+
+#     x_votes = x_votes[vote_slice]
+#     y_votes = y_votes[vote_slice]
+#     votes_weights = weights[vote_slice]
+
+#     heatmap = np.zeros((
+#         int(np.ceil(y_data.max()) + 1),
+#         int(np.ceil(x_data.max()) + 1),
+#     ))
+
+#     x_votes = np.round(x_votes).astype(int)
+#     y_votes = np.round(y_votes).astype(int)
+
+#     flat_votes_xy = y_votes * heatmap.shape[1] + x_votes
+
+#     unique_votes = np.unique(flat_votes_xy)
+#     unique_votes.sort()
+
+#     def get_between_votes_bins(votes):
+#         index_bin_offset = 0.5
+#         return get_appended_vote_bins(votes) + index_bin_offset
+
+#     def get_appended_vote_bins(votes):
+#         first_bin_edge = -1
+#         return np.hstack(((first_bin_edge,), votes))
+
+#     unique_vote_weights, _ = np.histogram(
+#         flat_votes_xy,
+#         bins=get_between_votes_bins(unique_votes),
+#         weights=votes_weights,
+#     )
+
+#     heatmap.ravel()[unique_votes] = unique_vote_weights
+
+#     if sigma > 0:
+#         heatmap = ndimage.gaussian_filter(heatmap, sigma)
+
+#     if heatmap.sum() > 0:
+#         heatmap /= heatmap.sum()
+
+#     return heatmap
+
 def get_heatmap(data, votes, weights, sigma: float) -> np.ndarray:
     """
     Get smoothed histogram.
@@ -244,52 +395,26 @@ def get_heatmap(data, votes, weights, sigma: float) -> np.ndarray:
     x_data, y_data = data
     x_votes, y_votes = votes
 
-    vote_slice = np.logical_and(
-        np.logical_and(x_votes >= 0, y_votes >= 0),
-        np.logical_and(x_votes <= x_data.max(), y_votes <= y_data.max()),
-    )
+    height = (np.ceil(y_data.max()) + 1).astype(int)
+    width = (np.ceil(x_data.max()) + 1).astype(int)
 
-    x_votes = x_votes[vote_slice]
-    y_votes = y_votes[vote_slice]
-    votes_weights = weights[vote_slice]
+    mask = (x_votes >= 0) & (y_votes >= 0) & (x_votes < width) & (y_votes < height)
 
-    heatmap = np.zeros((
-        int(np.ceil(y_data.max()) + 1),
-        int(np.ceil(x_data.max()) + 1),
-    ))
-
-    x_votes = np.round(x_votes).astype(int)
-    y_votes = np.round(y_votes).astype(int)
-
-    flat_votes_xy = y_votes * heatmap.shape[1] + x_votes
-
-    unique_votes = np.unique(flat_votes_xy)
-    unique_votes.sort()
-
-    def get_between_votes_bins(votes):
-        index_bin_offset = 0.5
-        return get_appended_vote_bins(votes) + index_bin_offset
-
-    def get_appended_vote_bins(votes):
-        first_bin_edge = -1
-        return np.hstack(((first_bin_edge,), votes))
-
-    unique_vote_weights, _ = np.histogram(
-        flat_votes_xy,
-        bins=get_between_votes_bins(unique_votes),
-        weights=votes_weights,
-    )
-
-    heatmap.ravel()[unique_votes] = unique_vote_weights
+    x_v = np.round(x_votes[mask]).astype(int)
+    y_v = np.round(y_votes[mask]).astype(int)
+    heatmap = np.bincount(
+        y_v * width + x_v,
+        weights=weights[mask],
+        minlength=width * height
+    ).reshape((height, width))
 
     if sigma > 0:
         heatmap = ndimage.gaussian_filter(heatmap, sigma)
 
-    if heatmap.sum() > 0:
-        heatmap /= heatmap.sum()
+    if (h_sum := heatmap.sum()) > 0:
+        heatmap /= h_sum
 
     return heatmap
-
 
 def get_centre_candidates(
     grid_size: tuple[int, int],

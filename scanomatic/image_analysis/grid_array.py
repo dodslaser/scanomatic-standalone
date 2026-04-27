@@ -51,7 +51,7 @@ def _analyse_grid_cell(
         )
 
     if transpose_polynomial is not None:
-        _set_image_transposition(grid_cell, transpose_polynomial)
+        grid_cell.source[...] = transpose_polynomial(grid_cell.source)
 
     if save_extra_data:
         grid_cell.save_data_image(
@@ -79,10 +79,6 @@ def _analyse_grid_cell(
 
     if semaphore is not None:
         semaphore.release()
-
-
-def _set_image_transposition(grid_cell, transpose_polynomial):
-    grid_cell.source[...] = transpose_polynomial(grid_cell.source)
 
 
 def _get_image_slice(im, grid_cell: Optional[GridCell]):

@@ -4,6 +4,8 @@ from shutil import rmtree
 from typing import Literal, Optional
 
 import click
+import numpy as np
+np.random.seed(42)  # For reproducibility in any random operations
 
 from scanomatic.models.compile_project_model import COMPILE_ACTION, FIXTURE
 from scanomatic.models.factories.analysis_factories import AnalysisModelFactory
@@ -15,7 +17,6 @@ from scanomatic.server.analysis_effector import AnalysisEffector
 from scanomatic.server.compile_effector import CompileProjectEffector
 from scanomatic.server.phenotype_effector import PhenotypeExtractionEffector
 
-import numpy as np
 
 @click.group()
 def cli(): ...
@@ -43,18 +44,20 @@ def cli(): ...
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
     default="INFO",
 )
-def compile(project_path: Path, fixture: Optional[str], image_ranges: Optional[str]):
+def compile(project_path: Path, fixture: Optional[str], image_ranges: Optional[str], log_level: str):
     logging.basicConfig(level=getattr(logging, log_level))
     logger = logging.getLogger("Compile CLI")
     include_indices = []
     for part in (image_ranges or "").split(","):
-        match part.strip().split("-"):
-            case [start, end]:
-                include_indices.extend(range(int(start), int(end)))
-            case [index]:
-                include_indices.append(int(index))
-            case _:
-                raise click.ClickException(f"Invalid image range format: '{part}'")
+        parts = part.strip().split("-")
+        if len(parts) > 2 or not all(p.isdigit() for p in parts):
+            raise click.ClickException(f"Invalid image range format: '{part}'")
+        if len(parts) == 2:
+            start, end = map(int, parts)
+            include_indices.extend(range(start, end))
+        elif len(parts) == 1:
+            index = int(parts[0])
+            include_indices.append(index)
 
     images = [
         {"path": p, "index": i} for i, p in enumerate(project_path.glob("*.tiff"))
